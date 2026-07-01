@@ -1,4 +1,2 @@
-# SOAL FISIKA
-Sebuah balok bermassa 5 kg berada di atas meja datar yang licin. 
-Balok ditarik dengan gaya konstan 20 N ke kanan.
-Hitung percepatan balok.
+# SOAL FISIKA DINAMIKA
+Sebuah balok bermassa 4 kg meluncur ke bawah pada bidang miring licin (tanpa gesekan) dengan sudut kemiringan 30 derajat. Jika percepatan gravitasi g = 10 m/s^2, hitunglah percepatan balok tersebut saat meluncur!
