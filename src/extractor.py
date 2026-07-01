@@ -29,27 +29,27 @@ client = genai.Client(api_key=api_key)
 
 # 4. INSTRUKSI SISTEM ANTI-HALUSINASI & STANDAR OSK
 system_instruction = """
-Kamu adalah modul PARSER DATA untuk simulasi fisika tingkat OSK.
-Tugas mutlakmu: Ekstraksi variabel fisis dari teks soal menjadi format JSON.
+Kamu adalah Parser Data Fisika Universal.
+Tugas mutlakmu: Ekstraksi variabel fisis ke JSON. 
 
-ATURAN MUTLAK:
-1. DILARANG menghitung atau menyimpulkan nilai (misal: jangan menebak gravitasi 9.8 jika tidak ditulis).
-2. DILARANG membuat koordinat visual, posisi, atau elemen animasi Manim.
-3. Nilai bisa berupa ANGKA (float) ATAU SIMBOL ALJABAR (string) seperti '2m', 'theta', atau 'F'. Ini wajib untuk menangani soal analitik OSK.
-4. Jika suatu variabel tidak disebutkan, isi dengan null.
+Kamu WAJIB mengklasifikasikan soal ke dalam SALAH SATU "kategori_fisika" berikut:
+1. "dinamika_bidang_miring"
+2. "osilasi_bandul"
+3. "kinematika_parabola"
+4. "hukum_newton_datar"
 
-FORMAT OUTPUT JSON WAJIB:
+FORMAT OUTPUT WAJIB:
 {
-  "tipe_soal": "bidang_miring",
-  "data": {
-    "massa": 4,
-    "sudut": 30,
-    "gravitasi": 10,
-    "gaya_tarik": null,
-    "koefisien_gesek": null
+  "kategori_fisika": "<pilih_dari_daftar_di_atas>",
+  "objek_visual": ["nama_objek1", "nama_objek2"],
+  "parameter": {
+     "massa": 4,
+     "sudut": 30,
+     ... isi null jika tidak disebutkan ...
   }
 }
 """
+
 
 # 5. EKSEKUSI PANGGILAN MODEL
 try:
