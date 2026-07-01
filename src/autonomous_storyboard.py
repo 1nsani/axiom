@@ -2,6 +2,8 @@ import os
 import json
 from google import genai
 from google.genai import types
+# IMPORT MODUL PEMBACA DOKUMEN BARU
+from reader import read_problem_file
 
 def generate_autonomous_storyboard():
     print("[*] Menjalankan Autonomous Storyboard Engine...")
@@ -13,32 +15,25 @@ def generate_autonomous_storyboard():
         
     client = genai.Client(api_key=api_key)
     
-    # CONTOH UMPAN: Kamu bisa ganti teks ini dengan soal bandul atau balok, AI akan beradaptasi!
-    problem_text = (
-        "Sebuah bandul matematis dengan panjang tali 3 meter dan beban 1 kg "
-        "disimpangkan sehingga membentuk sudut kecil lalu dilepaskan hingga berosilasi."
-    )
+    # SEKARANG INPUT NYA DINAMIS DARI OBSIDIAN MD FILE!
+    problem_text = read_problem_file()
+    print(f"[*] AI sedang memproses soal: {problem_text[:50]}...")
     
-    # PROMPT ARSITEK: Memaksa AI menjadi sutradara animasi yang mengeluarkan perintah primitif (DSL)
     prompt = f"""
     Kamu adalah mesin penerjemah visual untuk Manim. Tugasmu adalah membaca soal fisika dan mengubahnya menjadi instruksi visual primitif.
     
     Soal: '{problem_text}'
     
-    Keluarkan JSON dengan struktur seperti ini, sesuaikan objeknya dengan soal (jika bandul buat tali dan lingkaran, jika balok buat kotak):
+    Keluarkan JSON dengan struktur seperti ini, sesuaikan objeknya secara otonom dengan konten soal:
     {{
         "setup_objects": [
-            {{"id": "tali", "type": "Line", "color": "WHITE", "start": [0, 2, 0], "end": [1, -1, 0]}},
-            {{"id": "beban", "type": "Circle", "color": "RED", "radius": 0.4, "position": [1, -1, 0]}}
+            {{"id": "obj", "type": "Square", "color": "BLUE", "position": [0,0,0]}}
         ],
         "animations": [
-            {{"action": "Create", "target_id": "tali", "duration": 1}},
-            {{"action": "FadeIn", "target_id": "beban", "duration": 1}},
-            {{"action": "Rotate", "target_id": "tali", "angle": -2, "about_point": [0, 2, 0], "duration": 2}}
+            {{"action": "FadeIn", "target_id": "obj", "duration": 1}}
         ]
     }}
-    
-    Jawab HANYA dengan JSON murni. Jangan berikan penjelasan teks biasa.
+    Jawab HANYA dengan JSON murni.
     """
     
     try:
@@ -61,4 +56,4 @@ def generate_autonomous_storyboard():
 
 if __name__ == "__main__":
     generate_autonomous_storyboard()
-  
+    
