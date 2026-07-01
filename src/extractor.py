@@ -1,9 +1,10 @@
 import os
 import json
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 def extract_concept():
-    print("[*] Menjalankan Extractor...")
+    print("[*] Menjalankan Extractor (SDK Modern)...")
     
     # 1. Ambil API Key dari lingkungan sistem
     api_key = os.environ.get("GOOGLE_API_KEY")
@@ -11,13 +12,10 @@ def extract_concept():
         print("[-] GAGAL: Variabel lingkungan GOOGLE_API_KEY tidak ditemukan!")
         return
         
-    genai.configure(api_key=api_key)
-    
-    # 2. Inisiasi model yang tepat
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    # 2. Inisiasi Client dengan SDK Baru
+    client = genai.Client(api_key=api_key)
     
     # 3. Definisikan umpan soal (Problem)
-    # Di fase awal, kita gunakan string teks ini sebagai simulasi isi Problem.md
     problem_text = (
         "Sebuah balok bermassa 5 kg berada di atas meja datar yang licin. "
         "Balok ditarik dengan gaya konstan 20 N ke kanan. Hitung percepatan balok menggunakan Newton II."
@@ -31,13 +29,16 @@ def extract_concept():
     )
     
     try:
-        # 5. Panggil API dengan konfigurasi JSON yang benar (Mencegah Error 400)
-        response = model.generate_content(
-            prompt,
-            generation_config={"response_mime_type": "application/json"}
+        # 5. Panggil API menggunakan model terbaru dan kunci format JSON kaku
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"
+            ),
         )
         
-        # 6. Tentukan jalur penyimpanan absolut ke folder utama (/content/axiom/output.json)
+        # 6. Tentukan jalur penyimpanan absolut ke folder utama
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         output_file = os.path.join(base_dir, "output.json")
         
@@ -45,7 +46,7 @@ def extract_concept():
         with open(output_file, 'w', encoding='utf-8') as f:
             f.write(response.text)
             
-        print(f"[+] BERHASIL: File JSON sukses diciptakan di {output_file}")
+        print(f"[+] BERHASIL: File JSON sukses diciptakan via Gemini 2.5 di {output_file}")
         
     except Exception as e:
         print(f"[-] GAGAL saat memanggil API Gemini: {e}")
