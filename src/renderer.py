@@ -59,30 +59,38 @@ class DinamikaTranslasiScene(Scene):
         
         panah_group = VGroup()
         
+                # FASE 3: DIAGRAM BENDA BEBAS (LOGIKA STABIL)
+        vectors_to_render = physics_data.get("vectors_to_render", [])
+        color_map = {"GREEN": GREEN, "YELLOW": YELLOW, "RED": RED, "BLUE": BLUE, "WHITE": WHITE}
+        
         for v in vectors_to_render:
             v_logic = v.get("direction_logic", "")
             v_color = color_map.get(v.get("color", "WHITE"), WHITE)
             v_label_tex = v.get("label", "")
             
+            # Tentukan arah vektor
             if v_logic == "parallel_up": arah_vektor = vektor_paralel
             elif v_logic == "parallel_down": arah_vektor = -vektor_paralel
             elif v_logic == "perpendicular_up": arah_vektor = vektor_normal
             elif v_logic == "absolute_down": arah_vektor = DOWN
             else: arah_vektor = UP
             
-            # Perbaikan Absolut: Hindari put_start_and_end_on. Gunakan shift murni.
+            # Inisialisasi Panah
             panah = Arrow(ORIGIN, 1.5 * arah_vektor, buff=0, color=v_color, stroke_width=4)
-            panah.move_to(balok.get_center() + 0.75 * arah_vektor) # Posisi awal
+            offset = 0.75 * arah_vektor
+            panah.move_to(balok.get_center() + offset)
             
-            panah.add_updater(lambda m, av=arah_vektor: m.shift(balok.get_center() - m.get_start()))
-            
+            # Inisialisasi Label
             label = MathTex(v_label_tex, color=v_color).scale(0.8)
+            label.move_to(panah.get_end() + 0.3 * arah_vektor)
+            
+            # LOGIKA UP-DATER YANG BENAR (Tanpa shift)
+            panah.add_updater(lambda m, o=offset: m.move_to(balok.get_center() + o))
             label.add_updater(lambda m, p=panah, av=arah_vektor: m.move_to(p.get_end() + 0.3 * av))
             
-            panah_group.add(panah, label)
+            self.add(panah, label) # Langsung tambahkan ke scene
             self.play(GrowArrow(panah), Write(label), run_time=0.4)
-
-        self.wait(0.5)
+            
 
         # ==========================================
         # FASE 4: DYNAMICS EKSEKUSI
