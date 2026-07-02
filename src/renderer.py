@@ -1,98 +1,106 @@
 from manim import *
 import json
 import os
+import numpy as np
 
 class DinamikaTranslasiScene(Scene):
     def construct(self):
-        # 1. PENCARIAN PAYLOAD JSON (THE BRIDGE)
-        # Mencari file anim_input.json yang dilempar oleh Axiom-knowledge
-        # Asumsi struktur folder di Colab/Lokal:
-        # /content/
-        #   ├── Axiom-knowledge/anim_input.json
-        #   └── axiom/src/renderer.py
-        
-        possible_paths = [
-            "../Axiom-knowledge/anim_input.json",  # Jika dijalankan dari dalam folder axiom
-            "../../Axiom-knowledge/anim_input.json", # Jika dijalankan dari dalam axiom/src
-            "anim_input.json",                     # Fallback 1
-            "/content/Axiom-knowledge/anim_input.json" # Fallback absolut di Colab
-        ]
-        
-        json_path = None
-        for path in possible_paths:
-            if os.path.exists(path):
-                json_path = path
-                break
-                
-        if not json_path:
-            raise FileNotFoundError("FATAL: anim_input.json tidak ditemukan. Jalankan Axiom-knowledge (Otak) terlebih dahulu.")
+        # 1. BACA PAYLOAD JSON UNIVERSAL
+        try:
+            with open("anim_input.json", "r") as f:
+                physics_data = json.load(f)
+        except FileNotFoundError:
+            raise FileNotFoundError("FATAL: anim_input.json tidak ditemukan.")
 
-        # 2. MEMBACA DATA ABSOLUT
-        with open(json_path, "r") as f:
-            physics_data = json.load(f)
-
-        massa = physics_data["massa"]
-        theta_deg = physics_data["sudut_kemiringan"]
-        percepatan = physics_data["percepatan"]
-        arah = physics_data["arah_gerak"]
+        # 2. EKSTRAKSI PARAMETER BERSARANG
+        # Mengambil dari key "parameters" sesuai standar K-Series
+        params = physics_data.get("parameters", physics_data) 
+        
+        massa = params.get("massa", 0)
+        # Tangani kemungkinan nama key sudut yang berbeda dari Gemini
+        theta_deg = params.get("sudut_kemiringan", params.get("theta", 30)) 
+        percepatan = params.get("percepatan", 0)
+        arah = params.get("arah_gerak", "diam")
         
         theta_rad = np.radians(theta_deg)
 
-        # 3. MERAKIT GEOMETRI VISUAL (TANPA MENGHITUNG FISIKA)
-        # Bidang Miring
-        bidang_miring = Line(ORIGIN, 5 * RIGHT).rotate(theta_rad, about_point=ORIGIN)
-        base_line = Line(ORIGIN, 5 * RIGHT)
+        # 3. GEOMETRI DASAR
+        bidang_miring = Line(ORIGIN, 6 * RIGHT).rotate(theta_rad, about_point=ORIGIN).shift(LEFT*2 + DOWN*1)
+        base_line = Line(bidang_miring.get_start(), bidang_miring.get_start() + 6 * RIGHT)
         angle_arc = Angle(base_line, bidang_miring, radius=0.8)
         angle_label = MathTex(rf"{theta_deg}^\circ").next_to(angle_arc, RIGHT, buff=0.1)
 
-        # Balok
-        balok = Square(side_length=0.8, fill_opacity=0.7, color=BLUE)
-        balok.rotate(theta_rad) # Putar balok sejajar bidang
+        balok = Square(side_length=0.8, fill_opacity=0.6, color=BLUE)
+        balok.rotate(theta_rad)
         
-        # PERBAIKAN DI SINI: Hitung posisi permukaan bidang miring terlebih dahulu
-        titik_permukaan = bidang_miring.point_from_proportion(0.2)
+        # Kamus Vektor (Logika Matematika)
+        vektor_normal = np.array([-np.sin(theta_rad), np.cos(theta_rad), 0.0])
+        vektor_paralel = np.array([np.cos(theta_rad), np.sin(theta_rad), 0.0])
         
-        # Hitung vektor tegak lurus bidang miring secara matematis (X, Y)
-        # Vektor UP (0, 1) jika diputar sejajar bidang miring menjadi (-sin(theta), cos(theta))
-        vektor_normal = np.array([
-            -np.sin(theta_rad),
-            np.cos(theta_rad),
-            0.0
-        ])
-        
-        # Posisi awal balok: Berada di titik permukaan + bergeser setengah ukuran balok (0.4) tegak lurus bidang
-        start_point = titik_permukaan + (0.4 * vektor_normal)
+        start_point = bidang_miring.point_from_proportion(0.15) + (0.4 * vektor_normal)
         balok.move_to(start_point)
 
-        # 4. DIREKSI ANIMASI
+        self.play(Create(bidang_miring), Create(base_line), Create(angle_arc), Write(angle_label))
+        self.play(FadeIn(balok))
+
+        # 4. PERAKITAN VEKTOR DINAMIS (Berdasarkan Obsidian Visual Hooks)
+        vectors_to_render = physics_data.get("vectors_to_render", [])
+        panah_group = VGroup()
+        
+        # Pemetaan warna string ke objek warna Manim
+        color_map = {
+            "GREEN": GREEN, "YELLOW": YELLOW, "RED": RED, 
+            "BLUE": BLUE, "WHITE": WHITE
+        }
+
+        for v in vectors_to_render:
+            v_logic = v.get("direction_logic", "")
+            v_color = color_map.get(v.get("color", "WHITE"), WHITE)
+            v_label_tex = v.get("label", "")
+            
+            # Terjemahkan bahasa Obsidian ke bahasa Numpy
+            if v_logic == "parallel_up":
+                arah_vektor = vektor_paralel
+            elif v_logic == "parallel_down":
+                arah_vektor = -vektor_paralel
+            elif v_logic == "perpendicular_up":
+                arah_vektor = vektor_normal
+            elif v_logic == "absolute_down":
+                arah_vektor = DOWN
+            else:
+                arah_vektor = UP
+            
+            # Buat Panah dengan Updater
+            panah = Arrow(max_stroke_width_to_length_ratio=0, color=v_color)
+            panah.add_updater(lambda m, av=arah_vektor: m.put_start_and_end_on(
+                balok.get_center(), 
+                balok.get_center() + 1.5 * av
+            ))
+            
+            label = MathTex(v_label_tex).add_updater(
+                lambda m, p=panah, av=arah_vektor: m.next_to(p.get_end(), av, buff=0.1)
+            )
+            
+            panah_group.add(panah, label)
+
+        self.play(Create(panah_group))
+
+        # 5. EKSEKUSI ANIMASI TRANSLASI
         if arah == "ke_atas":
-            titik_target_permukaan = bidang_miring.point_from_proportion(0.8)
-            target_posisi = titik_target_permukaan + (0.4 * vektor_normal)
+            target_posisi = bidang_miring.point_from_proportion(0.75) + (0.4 * vektor_normal)
         elif arah == "ke_bawah":
-            titik_target_permukaan = bidang_miring.point_from_proportion(0.0)
-            target_posisi = titik_target_permukaan + (0.4 * vektor_normal)
+            target_posisi = bidang_miring.point_from_proportion(0.15) + (0.4 * vektor_normal)
         else:
             target_posisi = balok.get_center()
 
-
-        # Tampilkan Elemen Statis
-        self.play(Create(bidang_miring), Create(base_line), Create(angle_arc), Write(angle_label))
-        self.play(FadeIn(balok))
-        self.wait(0.5)
-
-        # HUD (Head-Up Display) Parameter
-        hud_text = Tex(f"Massa: {massa} kg\\\\Percepatan: {percepatan} m/s$^2$").to_edge(UP + LEFT)
-        self.play(Write(hud_text))
-
-        # Eksekusi Vektor Gerak
-        # Waktu animasi berbanding terbalik dengan percepatan (skala kasar untuk visual)
-        run_time_calc = max(1.0, 5.0 / (abs(percepatan) + 1)) 
-        
-        if arah != "diam":
-            self.play(
-                balok.animate.move_to(target_posisi), 
-                run_time=run_time_calc, 
-                rate_func=linear
-            )
+        # Proteksi run_time agar tidak error saat percepatan 0 atau string aneh
+        try:
+            run_time_calc = max(1.5, 6.0 / (float(abs(percepatan)) + 1))
+        except (ValueError, TypeError):
+            run_time_calc = 2.0
+            
+        if arah != "diam" and arah != "":
+            self.play(balok.animate.move_to(target_posisi), run_time=run_time_calc, rate_func=linear)
         
         self.wait(1)
+        
