@@ -47,18 +47,33 @@ class DinamikaTranslasiScene(Scene):
 
         # Balok
         balok = Square(side_length=0.8, fill_opacity=0.7, color=BLUE)
-        balok.rotate(theta_rad)
-        # Posisi awal (0.2 dari panjang bidang miring)
-        start_point = bidang_miring.point_from_proportion(0.2) + 0.4 * UP.rotate(theta_rad)
+        balok.rotate(theta_rad) # Putar balok sejajar bidang
+        
+        # PERBAIKAN DI SINI: Hitung posisi permukaan bidang miring terlebih dahulu
+        titik_permukaan = bidang_miring.point_from_proportion(0.2)
+        
+        # Hitung vektor tegak lurus bidang miring secara matematis (X, Y)
+        # Vektor UP (0, 1) jika diputar sejajar bidang miring menjadi (-sin(theta), cos(theta))
+        vektor_normal = np.array([
+            -np.sin(theta_rad),
+            np.cos(theta_rad),
+            0.0
+        ])
+        
+        # Posisi awal balok: Berada di titik permukaan + bergeser setengah ukuran balok (0.4) tegak lurus bidang
+        start_point = titik_permukaan + (0.4 * vektor_normal)
         balok.move_to(start_point)
 
         # 4. DIREKSI ANIMASI
         if arah == "ke_atas":
-            target_posisi = bidang_miring.point_from_proportion(0.8) + 0.4 * UP.rotate(theta_rad)
+            titik_target_permukaan = bidang_miring.point_from_proportion(0.8)
+            target_posisi = titik_target_permukaan + (0.4 * vektor_normal)
         elif arah == "ke_bawah":
-            target_posisi = bidang_miring.point_from_proportion(0.0) + 0.4 * UP.rotate(theta_rad)
+            titik_target_permukaan = bidang_miring.point_from_proportion(0.0)
+            target_posisi = titik_target_permukaan + (0.4 * vektor_normal)
         else:
             target_posisi = balok.get_center()
+
 
         # Tampilkan Elemen Statis
         self.play(Create(bidang_miring), Create(base_line), Create(angle_arc), Write(angle_label))
