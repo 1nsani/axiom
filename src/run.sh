@@ -1,23 +1,29 @@
 %%writefile run.sh
 #!/bin/bash
 
-# Pastikan kita di root /content/axiom
-echo "[+] Menjalankan sistem di: $(pwd)"
+# Pastikan kita di folder root proyek
+# Kita tidak akan berpindah-pindah folder (cd) agar tidak tersesat
+echo "[+] Lokasi saat ini: $(pwd)"
 
-# 1. Jalankan translator (main.py di dalam src/)
-echo "[+] Mengolah 'Docs/Problem.md' via src/main.py..."
-python3 src/main.py
-
-# 2. Validasi apakah main.py menghasilkan anim_input.json di root
-if [ ! -f "anim_input.json" ]; then
-    echo "[-] FATAL: 'anim_input.json' tidak ditemukan di $(pwd). Periksa src/main.py."
+# 1. Jalankan main.py (asumsi berada di ./src/main.py)
+echo "[+] Mengolah 'problem.md' via src/main.py..."
+if [ -f "./src/main.py" ]; then
+    python3 ./src/main.py
+else
+    echo "[-] ERROR: src/main.py tidak ditemukan!"
     exit 1
 fi
 
-# 3. Eksekusi Render (renderer.py di dalam src/)
-# Kita jalankan langsung dari root agar Manim membaca config dari sini
-echo "[+] Rendering visual..."
-rm -rf media/
+# 2. Cek apakah anim_input.json terbuat
+if [ ! -f "anim_input.json" ]; then
+    echo "[-] ERROR: 'anim_input.json' tidak terbuat. Periksa output dari main.py."
+    exit 1
+fi
+
+# 3. Jalankan Renderer (asumsi ada di ./src/renderer.py)
+echo "[+] Rendering visual via src/renderer.py..."
+# Hapus folder media jika ada
+rm -rf media/ 
 manim -ql src/renderer.py DinamikaTranslasiScene
 
-echo "[+] Selesai. Video tersimpan di media/videos/renderer/480p15/"
+echo "[+] Selesai."
