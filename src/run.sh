@@ -1,24 +1,25 @@
+%%writefile run.sh
 #!/bin/bash
 
-# 1. Konversi MD ke JSON
-echo "[+] Mengolah 'problem.md'..."
-python3 main.py
+# Pindah ke direktori utama (tempat run.sh berada)
+cd "$(dirname "$0")"
 
-# 2. Validasi keberadaan file
+echo "[+] Memulai proses otonom..."
+
+# 1. Jalankan translator dari dalam folder src
+echo "[+] Mengolah 'problem.md' via src/main.py..."
+python3 src/main.py
+
+# 2. Validasi output
 if [ ! -f "anim_input.json" ]; then
-    echo "[-] FATAL: 'main.py' gagal menghasilkan 'anim_input.json'"
+    echo "[-] FATAL: 'anim_input.json' tidak dihasilkan. Periksa src/main.py."
     exit 1
 fi
 
-# 3. Sinkronisasi (Otomatis)
-echo "[+] Sinkronisasi ke Tubuh (Axiom)..."
-cp anim_input.json axiom/anim_input.json
-
-# 4. Eksekusi Render
+# 3. Eksekusi Render
+# Renderer berada di src/renderer.py, jalankan langsung dari root
 echo "[+] Rendering visual..."
-cd axiom
-rm -rf media/  # Bersihkan residu agar selalu fresh
+rm -rf media/
 manim -ql src/renderer.py DinamikaTranslasiScene
-cd ..
 
-echo "[+] Selesai. Hasil ada di 'axiom/media/videos/renderer/480p15/'"
+echo "[+] Selesai."
