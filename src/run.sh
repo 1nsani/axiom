@@ -1,29 +1,28 @@
 %%writefile run.sh
 #!/bin/bash
 
-# Pastikan kita di folder root proyek
-# Kita tidak akan berpindah-pindah folder (cd) agar tidak tersesat
-echo "[+] Lokasi saat ini: $(pwd)"
+# Pindah ke direktori skrip ini berada
+cd "$(dirname "$0")"
 
-# 1. Jalankan main.py (asumsi berada di ./src/main.py)
-echo "[+] Mengolah 'problem.md' via src/main.py..."
-if [ -f "./src/main.py" ]; then
-    python3 ./src/main.py
-else
-    echo "[-] ERROR: src/main.py tidak ditemukan!"
-    exit 1
-fi
+echo "[+] Memulai pipeline otonom..."
 
-# 2. Cek apakah anim_input.json terbuat
+# 1. Main Processor (Translator)
+# Pastikan path folder 'docs' sudah benar (huruf kecil)
+python3 src/main.py
 if [ ! -f "anim_input.json" ]; then
-    echo "[-] ERROR: 'anim_input.json' tidak terbuat. Periksa output dari main.py."
+    echo "[-] FATAL: anim_input.json gagal dibuat."
     exit 1
 fi
 
-# 3. Jalankan Renderer (asumsi ada di ./src/renderer.py)
-echo "[+] Rendering visual via src/renderer.py..."
-# Hapus folder media jika ada
-rm -rf media/ 
+# 2. Rendering
+echo "[+] Merender visual..."
+rm -rf media/
 manim -ql src/renderer.py DinamikaTranslasiScene
 
-echo "[+] Selesai."
+# 3. Auto-Display (Jembatan dari Shell ke IPython Kernel)
+echo "[+] Menampilkan hasil..."
+python3 -c "
+from src.display import display_latest_video
+from IPython.display import display
+display(display_latest_video())
+"
