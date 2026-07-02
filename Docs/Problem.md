@@ -1,2 +1,9 @@
-# SOAL FISIKA DINAMIKA
-Sebuah balok bermassa 4 kg meluncur ke bawah pada bidang miring licin (tanpa gesekan) dengan sudut kemiringan 10 derajat. Jika percepatan gravitasi g = 10 m/s^2, hitunglah percepatan balok tersebut saat meluncur!
+{
+    "scene_type": "inclined_plane",
+    "parameters": {
+        "massa": 4,
+        "sudut_kemiringan": 10,
+        "percepatan": 7.5,
+        "arah_gerak": "ke_bawah"
+    }
+}
