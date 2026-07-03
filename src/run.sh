@@ -1,11 +1,13 @@
 #!/bin/bash
 cd "$(dirname "$0")"
 
-# 1. Translate
+# Bersihkan output lama
+echo "[+] Membersihkan cache..."
+rm -rf media/
+
+# Jalankan Translator
 python3 src/main.py
 
-# 2. Render
-rm -rf media/
+# Jalankan Render standar
+echo "[+] Rendering visual..."
 manim -ql src/renderer.py DinamikaTranslasiScene
-
-echo "[+] Selesai. Silakan jalankan cell display untuk melihat video."
