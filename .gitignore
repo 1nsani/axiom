@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.env
+media/
+manim_log.txt
+anim_input.json

@@ -1,13 +1,10 @@
 #!/bin/bash
-cd "$(dirname "$0")"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+cd "$PROJECT_ROOT"
 
-# Bersihkan output lama
+echo "[+] cwd sekarang: $(pwd)"
 echo "[+] Membersihkan cache..."
 rm -rf media/
 
-# Jalankan Translator
-python3 src/main.py
-
-# Jalankan Render standar
-echo "[+] Rendering visual..."
-manim -ql src/renderer.py DinamikaTranslasiScene
+python3 src/orchestrator.py

@@ -6,7 +6,11 @@ REGISTRY = {
     "collision": solve_collision,
 }
 
-def solve(scene_type, known):
+def solve(scene_type: str, known: dict) -> dict:
     if scene_type not in REGISTRY:
-        raise ValueError(f"Tidak ada solver untuk scene_type '{scene_type}'.")
+        raise ValueError(
+            f"[ANTI-HALUSINASI] Tidak ada solver untuk scene_type '{scene_type}'. "
+            f"Solver tersedia: {list(REGISTRY.keys())}. "
+            f"Pipeline dihentikan — tidak menebak jawaban untuk domain yang belum diimplementasi."
+        )
     return REGISTRY[scene_type](known)

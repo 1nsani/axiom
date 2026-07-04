@@ -1,38 +1,52 @@
-import subprocess
-import sys
-import os
 import json
+import os
+import sys
 
 def main():
-    print("[SYSTEM] Axiom Engine - Orchestrator")
+    print("[ORCH] Axiom Engine - Orchestrator")
     shared_path = "/content/drive/MyDrive/axiom_shared/known_parameters.json"
     if not os.path.exists(shared_path):
-        print(f"[-] FATAL: {shared_path} tidak ditemukan.")
-        sys.exit(1)
+        sys.exit(f"[-] FATAL: {shared_path} tidak ditemukan.")
+
     with open(shared_path, "r") as f:
         known_data = json.load(f)
+
     scene_type = known_data.get("scene_type")
     known = known_data.get("known", {})
     visual_hooks = known_data.get("visual_hooks", {})
-    if not scene_type or not known:
-        print("[-] FATAL: known_parameters.json tidak valid.")
-        sys.exit(1)
+
+    if not scene_type:
+        sys.exit("[-] FATAL: scene_type tidak ada di known_parameters.json.")
+
     from solvers import solve
     try:
         physics_result = solve(scene_type, known)
+        print(f"[ORCH] physics_result: {json.dumps(physics_result, indent=2)}")
     except Exception as e:
-        print(f"[-] Solver gagal: {e}")
-        sys.exit(1)
-    from bridge import build_anim_input
-    anim_data = build_anim_input(known, physics_result, visual_hooks)
-    from renderer import render_scene
+        sys.exit(f"[-] Solver gagal: {e}")
+
+    anim_data = {
+        "motion_type": physics_result["motion_type"],
+        "parameters": known,
+        "hasil_fisika": physics_result["hasil"],
+        "vectors_to_render": visual_hooks.get("vectors_template", [])
+    }
+    with open("anim_input.json", "w") as f:
+        json.dump(anim_data, f, indent=4)
+    print("[ORCH] anim_input.json ditulis.")
+
+    from render_runner import MOTION_TO_SCENE, run_render
+    motion_type = physics_result["motion_type"]
+    if motion_type not in MOTION_TO_SCENE:
+        sys.exit(f"[-] Tidak ada Scene terdaftar untuk motion_type '{motion_type}'.")
+
+    scene_class = MOTION_TO_SCENE[motion_type]
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     try:
-        render_scene("anim_input.json")
-        print("[+] Render selesai.")
+        video_path = run_render(scene_class, project_root)
+        print(f"[ORCH] Selesai. Video: {video_path}")
     except Exception as e:
-        print(f"[-] Render gagal: {e}")
-        sys.exit(1)
-    print("[SYSTEM] Selesai.")
+        sys.exit(f"[-] Render gagal: {e}")
 
 if __name__ == "__main__":
     main()
