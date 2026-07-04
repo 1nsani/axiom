@@ -2,7 +2,8 @@ import math
 
 def solve_inclined_plane(known):
     m = known.get("massa", 1.0)
-    theta_deg = known.get("sudut_permukaan", 0.0)
+    # Coba dua kemungkinan key: "sudut" atau "sudut_permukaan"
+    theta_deg = known.get("sudut_permukaan", known.get("sudut", 0.0))
     g = known.get("gravitasi", 10.0)
     mu = known.get("koefisien_gesek", 0.0)
     theta = math.radians(theta_deg)

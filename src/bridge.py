@@ -2,6 +2,9 @@ import json
 import os
 
 def build_anim_input(known, physics_result, visual_hooks, output_file="anim_input.json"):
+    # Tambahkan arah_gerak default jika tidak ada
+    if "arah_gerak" not in known:
+        known["arah_gerak"] = "ke_bawah"  # default agar balok bergerak
     anim_data = {
         "motion_type": physics_result.get("motion_type"),
         "parameters": known,
