@@ -1,36 +1,38 @@
 import subprocess
 import sys
 import os
-
-def run_module(module_path):
-    print(f"\n{'='*50}\n[>] Mengeksekusi: {module_path}\n{'='*50}")
-    result = subprocess.run([sys.executable, module_path])
-    if result.returncode != 0:
-        print(f"\n[!] ERROR FATAL: {module_path} gagal (Exit code {result.returncode}).")
-        print("[!] Rantai eksekusi dihentikan paksa untuk mencegah kerusakan data.")
-        sys.exit(1)
+import json
 
 def main():
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    
-    # Rantai pipa mutlak
-    modules = [
-        os.path.join(base_dir, "src", "extractor.py"),
-        os.path.join(base_dir, "src", "solver.py"),
-        os.path.join(base_dir, "src", "renderer.py")
-    ]
-    
-    for mod in modules:
-        if not os.path.exists(mod):
-            print(f"[!] ERROR: Modul {mod} tidak ditemukan!")
-            sys.exit(1)
-        run_module(mod)
-        
-    print(f"\n{'='*50}")
-    print("[+] SELURUH RANTAI KOMPILASI BERHASIL DIEKSEKUSI.")
-    print("[+] Sistem siap untuk tahap rendering Manim.")
-    print(f"{'='*50}\n")
+    print("[SYSTEM] Axiom Engine - Orchestrator")
+    shared_path = "/content/drive/MyDrive/axiom_shared/known_parameters.json"
+    if not os.path.exists(shared_path):
+        print(f"[-] FATAL: {shared_path} tidak ditemukan.")
+        sys.exit(1)
+    with open(shared_path, "r") as f:
+        known_data = json.load(f)
+    scene_type = known_data.get("scene_type")
+    known = known_data.get("known", {})
+    visual_hooks = known_data.get("visual_hooks", {})
+    if not scene_type or not known:
+        print("[-] FATAL: known_parameters.json tidak valid.")
+        sys.exit(1)
+    from solvers import solve
+    try:
+        physics_result = solve(scene_type, known)
+    except Exception as e:
+        print(f"[-] Solver gagal: {e}")
+        sys.exit(1)
+    from bridge import build_anim_input
+    anim_data = build_anim_input(known, physics_result, visual_hooks)
+    from renderer import render_scene
+    try:
+        render_scene("anim_input.json")
+        print("[+] Render selesai.")
+    except Exception as e:
+        print(f"[-] Render gagal: {e}")
+        sys.exit(1)
+    print("[SYSTEM] Selesai.")
 
 if __name__ == "__main__":
     main()
-  
