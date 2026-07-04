@@ -4,3 +4,7 @@ __pycache__/
 media/
 manim_log.txt
 anim_input.json
+media/
+manim_log.txt
+anim_input.json
+.env

@@ -2,13 +2,25 @@ import subprocess
 import json
 import os
 import sys
+import shutil
 
 MOTION_TO_SCENE = {
     "static_incline": "InclinedPlaneScene",
     "collision_1d": "Collision1DScene",
 }
 
+def preflight_check_latex():
+    """Pastikan binary LaTeX tersedia, gagal cepat jika tidak."""
+    missing = [b for b in ("latex", "dvisvgm") if shutil.which(b) is None]
+    if missing:
+        raise RuntimeError(
+            f"[FATAL] Binary tidak ditemukan di PATH: {missing}. "
+            f"Kemungkinan texlive tidak persisten (runtime restart). "
+            f"Jalankan: !sudo apt update && sudo apt install -y texlive texlive-latex-extra dvisvgm"
+        )
+
 def run_render(scene_class_name: str, project_root: str) -> str:
+    preflight_check_latex()   # <-- gagal cepat di sini
     cmd = [
         sys.executable, "-m", "manim",
         "-ql",

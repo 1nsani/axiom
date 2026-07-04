@@ -4,9 +4,10 @@ import sys
 
 def main():
     print("[ORCH] Axiom Engine - Orchestrator")
-    shared_path = "/content/drive/MyDrive/axiom_shared/known_parameters.json"
+    # Gunakan folder lokal sementara (tanpa Google Drive)
+    shared_path = "/tmp/axiom_shared/known_parameters.json"
     if not os.path.exists(shared_path):
-        sys.exit(f"[-] FATAL: {shared_path} tidak ditemukan.")
+        sys.exit(f"[-] FATAL: {shared_path} tidak ditemukan. Jalankan brain dulu.")
 
     with open(shared_path, "r") as f:
         known_data = json.load(f)
