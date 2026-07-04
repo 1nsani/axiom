@@ -2,16 +2,41 @@ from manim import *
 import json
 import numpy as np
 import os
+import re
+from renderer_registry import SUPPORTED_DIRECTIONS, SUPPORTED_COLORS, vektor_normal, vektor_paralel
+# Mapping dari nama warna (string) ke konstanta Manim
+MANIM_COLORS = {
+    "GREEN": GREEN,
+    "YELLOW": YELLOW,
+    "RED": RED,
+    "BLUE": BLUE,
+    "WHITE": WHITE,
+    "ORANGE": ORANGE,
+    "PURPLE": PURPLE,
+}
+
+def _latex_to_plain(latex_str: str) -> str:
+    s = latex_str.replace("\\vec", "").replace("\\", "")
+    return re.sub(r"[{}]", "", s)
+
+def make_label(latex_str: str, color, font_size=20):
+    try:
+        lbl = MathTex(latex_str, color=color)
+        lbl.scale(font_size / 24)
+        return lbl
+    except Exception as e:
+        plain = _latex_to_plain(latex_str)
+        print(f"[WARN] MathTex gagal untuk '{latex_str}', fallback Text: '{plain}' ({e})")
+        return Text(plain, font_size=font_size, color=color)
 
 class InclinedPlaneScene(Scene):
     def construct(self):
-        # Baca data
         input_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             "anim_input.json"
         )
         if not os.path.exists(input_path):
-            raise FileNotFoundError("anim_input.json tidak ditemukan")
+            raise FileNotFoundError(f"anim_input.json tidak ditemukan di {input_path}")
 
         with open(input_path, "r") as f:
             data = json.load(f)
@@ -22,97 +47,111 @@ class InclinedPlaneScene(Scene):
 
         massa = params.get("massa", 1)
         theta_deg = params.get("sudut_permukaan", 30)
+        theta_rad = np.radians(theta_deg)
         percepatan = hasil_fisika.get("percepatan", 0)
         arah_gerak = hasil_fisika.get("arah_gerak", "diam")
         gaya_gesek = hasil_fisika.get("gaya_gesek", 0)
 
-        print(f"[DEBUG] massa={massa}, sudut={theta_deg}°, a={percepatan}, arah={arah_gerak}")
-
-        theta_rad = np.radians(theta_deg)
+        print(f"[DEBUG] Scene: massa={massa}, sudut={theta_deg}°, a={percepatan}, arah={arah_gerak}")
 
         # Bidang miring
-        bidang = Line(ORIGIN, 7 * RIGHT).rotate(theta_rad, about_point=ORIGIN).shift(LEFT*3 + DOWN*1)
-        alas = Line(bidang.get_start(), bidang.get_start() + 7 * RIGHT)
-        sudut = Angle(alas, bidang, radius=0.8)
-        label_sudut = Text(f"{theta_deg}°", font_size=24).next_to(sudut, RIGHT, buff=0.1)
-        self.play(Create(alas), Create(bidang), run_time=1)
-        self.play(Create(sudut), Write(label_sudut), run_time=0.5)
+        bidang_miring = Line(ORIGIN, 7 * RIGHT).rotate(theta_rad, about_point=ORIGIN).shift(LEFT*3 + DOWN*1)
+        base_line = Line(bidang_miring.get_start(), bidang_miring.get_start() + 7 * RIGHT)
+        angle_arc = Angle(base_line, bidang_miring, radius=0.8)
+        angle_label = Text(f"{theta_deg}°", font_size=24).next_to(angle_arc, RIGHT, buff=0.1)
+        self.play(Create(base_line), Create(bidang_miring), run_time=1)
+        self.play(Create(angle_arc), Write(angle_label), run_time=0.5)
 
         # Balok
-        v_norm = np.array([-np.sin(theta_rad), np.cos(theta_rad), 0.0])
-        v_par = np.array([np.cos(theta_rad), np.sin(theta_rad), 0.0])
         balok = Square(side_length=0.8, fill_opacity=0.6, color=BLUE)
         balok.rotate(theta_rad)
-        start = bidang.point_from_proportion(0.15) + 0.4 * v_norm
-        balok.move_to(start)
+        start_prop = 0.15
+        start_point = bidang_miring.point_from_proportion(start_prop) + (0.4 * vektor_normal(theta_rad))
+        balok.move_to(start_point)
 
         # HUD
-        info = VGroup(
+        hud = VGroup(
             Text(f"Massa: {massa} kg", font_size=20),
-            Text(f"Percepatan: {percepatan:.2f} m/s²", font_size=20),
-            Text("Status: DIAM" if arah_gerak == "diam" else "Bergerak", font_size=20, color=YELLOW if arah_gerak == "diam" else GREEN)
+            Text(f"Percepatan: {percepatan:.2f} m/s²", font_size=20)
         ).arrange(DOWN, aligned_edge=LEFT).to_corner(UL)
-        self.play(FadeIn(balok, shift=DOWN*0.5), Write(info))
+        self.play(FadeIn(balok, shift=DOWN*0.5), Write(hud))
 
-        # Gambar vektor sederhana (tanpa LaTeX)
-        def simple_vector(arah, warna, teks, offset_f=0.75):
-            arr = Arrow(ORIGIN, 1.5 * arah, buff=0, color=warna, stroke_width=4)
-            arr.move_to(balok.get_center() + offset_f * arah)
-            lbl = Text(teks, font_size=18, color=warna)
-            lbl.next_to(arr.get_end(), direction=arah, buff=0.1)
-            arr.add_updater(lambda m, o=offset_f, d=arah: m.move_to(balok.get_center() + o * d))
-            lbl.add_updater(lambda m, a=arr, d=arah: m.next_to(a.get_end(), direction=d, buff=0.1))
-            self.add(arr, lbl)
-            self.play(GrowArrow(arr), Write(lbl), run_time=0.3)
+        # Fungsi menggambar vektor
+        def _draw_vector(direction, color, tex_label, offset_factor=0.75):
+            arah = direction
+            panjang = 1.5
+            arrow = Arrow(ORIGIN, panjang * arah, buff=0, color=color, stroke_width=4)
+            offset = offset_factor * arah
+            arrow.move_to(balok.get_center() + offset)
+            lbl = make_label(tex_label, color, font_size=18)
+            lbl.move_to(arrow.get_end() + 0.3 * arah)
 
-        # Mapping arah
-        dir_map = {
-            "parallel_up": v_par, "parallel_down": -v_par,
-            "perpendicular_up": v_norm, "perpendicular_down": -v_norm,
-            "absolute_down": DOWN
-        }
-        col_map = {"GREEN": GREEN, "YELLOW": YELLOW, "RED": RED,
-                   "BLUE": BLUE, "WHITE": WHITE, "ORANGE": ORANGE, "PURPLE": PURPLE}
+            arrow.add_updater(lambda m, o=offset: m.move_to(balok.get_center() + o))
+            lbl.add_updater(lambda m, p=arrow, av=arah: m.move_to(p.get_end() + 0.3 * av))
 
-        for v in vectors:
-            logic = v.get("direction_logic")
-            if logic not in dir_map:
+            self.add(arrow, lbl)
+            self.play(GrowArrow(arrow), Write(lbl), run_time=0.4)
+
+        # Gambar vektor dari metadata menggunakan registry
+        for vec in vectors:
+            logic = vec.get("direction_logic")
+            color_name = vec.get("color", "WHITE")
+            if logic not in SUPPORTED_DIRECTIONS:
+                print(f"[SKIP] direction_logic '{logic}' tidak didukung, vektor diabaikan.")
                 continue
-            if v.get("id") == "F_ext" and params.get("gaya_eksternal", 0) == 0:
+            if color_name not in SUPPORTED_COLORS:
+                print(f"[SKIP] color '{color_name}' tidak didukung, vektor diabaikan.")
                 continue
-            d = dir_map[logic]
-            c = col_map.get(v.get("color", "WHITE"), WHITE)
-            label_bersih = v["label"].replace("\\vec", "").replace("{", "").replace("}", "").replace("\\", "")
-            # offset disesuaikan
-            if logic == "parallel_down":
-                off = 0.6
-            elif logic == "parallel_up":
-                off = 0.8
+            if vec.get("id") == "F_ext" and params.get("gaya_eksternal", 0) == 0:
+                continue
+
+            # Dapatkan arah vektor dengan fungsi dari registry
+            dir_vec = SUPPORTED_DIRECTIONS[logic](theta_rad)
+            col = MANIM_COLORS[color_name]
+
+            # Atur offset berdasarkan logic
+            if logic in ("parallel_up", "parallel_down"):
+                off = 0.8 if logic == "parallel_up" else 0.6
             elif logic in ("perpendicular_up", "perpendicular_down"):
-                off = 0.65
+                off = 0.6 if logic == "perpendicular_up" else 0.7
             elif logic == "absolute_down":
                 off = 0.7
             else:
                 off = 0.75
-            simple_vector(d, c, label_bersih, offset_f=off)
+            _draw_vector(dir_vec, col, vec["label"], offset_factor=off)
 
-        # Gaya gesek
+        # Gaya gesek (jika ada)
         if gaya_gesek > 1e-6:
             if arah_gerak == "ke_atas":
-                g_dir = -v_par
+                gesek_dir = SUPPORTED_DIRECTIONS["parallel_down"](theta_rad)
             elif arah_gerak == "ke_bawah":
-                g_dir = v_par
+                gesek_dir = SUPPORTED_DIRECTIONS["parallel_up"](theta_rad)
             else:
-                g_dir = -v_par  # default ke bawah jika diam
-            simple_vector(g_dir, PURPLE, "f_gesek", offset_f=0.9)
+                gesek_dir = SUPPORTED_DIRECTIONS["parallel_down"](theta_rad)
+            _draw_vector(gesek_dir, PURPLE, "f_{\\text{gesek}}", offset_factor=0.9)
 
-        # Balok tetap di tempat (karena diam)
-        self.wait(2)
-        print("[DEBUG] Scene selesai (benda diam)")
+        # Gerakan balok
+        vn = vektor_normal(theta_rad)
+        if arah_gerak == "ke_bawah":
+            target_prop = 0.0
+        elif arah_gerak == "ke_atas":
+            target_prop = 0.85
+        else:
+            target_prop = start_prop
+
+        target_pos = bidang_miring.point_from_proportion(target_prop) + (0.4 * vn)
+
+        if arah_gerak != "diam" and abs(percepatan) > 1e-6:
+            run_time = max(1.0, 6.0 / (abs(percepatan) + 1))
+            self.play(balok.animate.move_to(target_pos), run_time=run_time, rate_func=linear)
+        else:
+            self.wait(1)
+
+        self.wait(1.5)
 
 
 class Collision1DScene(Scene):
-    # ... tetap sama seperti sebelumnya (sudah stabil)
+    # ... tetap sama seperti sebelumnya (tidak berubah)
     def construct(self):
         input_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),

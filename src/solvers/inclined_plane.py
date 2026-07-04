@@ -8,41 +8,38 @@ def solve_inclined_plane(known: dict) -> dict:
 
     g = known.get("gravitasi", 10.0)
     mu = known.get("koefisien_gesek", 0.0)
-    F_ext = known.get("gaya_eksternal", 0.0)   # positif = ke atas bidang
+    F_ext = known.get("gaya_eksternal", 0.0)
 
     theta = math.radians(theta_deg)
-    W_paralel = m * g * math.sin(theta)        # gaya berat sejajar ke bawah
-    N = m * g * math.cos(theta)                # gaya normal
-    f_gesek_max = mu * N                       # gaya gesek maksimum
+    W_paralel = m * g * math.sin(theta)
+    N = m * g * math.cos(theta)
+    f_max = mu * N
 
-    # Gaya penggerak tanpa gesek: positif = ke bawah
-    F_penggerak = W_paralel - F_ext
+    F_net = W_paralel - F_ext   # positif = ke bawah
 
-    # Tentukan arah dan percepatan
-    if abs(F_penggerak) <= f_gesek_max:
-        # Benda diam karena gaya penggerak tidak cukup mengatasi gesekan
+    # Toleransi untuk mengatasi floating point (contoh: F_net = -2e-16)
+    epsilon = 1e-9
+    if abs(F_net) <= f_max + epsilon:
         a = 0.0
-        arah_gerak = "diam"
-        f_gesek_aktual = F_penggerak   # gesek statis menyesuaikan
+        f_aktual = F_net if abs(F_net) <= f_max else f_max
+        arah = "diam"
     else:
-        # Benda bergerak
-        if F_penggerak > 0:
-            # Bergerak ke bawah, gesek ke atas
-            a = (F_penggerak - f_gesek_max) / m
-            arah_gerak = "ke_bawah"
+        f_aktual = f_max
+        if F_net > 0:
+            a = (F_net - f_max) / m
+            arah = "ke_bawah"
         else:
-            # Bergerak ke atas, gesek ke bawah
-            a = (F_penggerak + f_gesek_max) / m  # F_penggerak negatif
-            arah_gerak = "ke_atas"
-        f_gesek_aktual = f_gesek_max  # kinetis
+            a = (F_net + f_max) / m
+            arah = "ke_atas"
 
     return {
         "motion_type": "static_incline",
         "hasil": {
             "percepatan": round(a, 4),
-            "arah_gerak": arah_gerak,
+            "arah_gerak": arah,
             "gaya_normal": round(N, 2),
-            "gaya_gesek": round(f_gesek_aktual, 2),
+            "gaya_gesek": round(f_aktual, 2),
+            "gaya_eksternal": F_ext,
         },
         "duration": 4.0,
     }
