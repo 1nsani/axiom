@@ -220,3 +220,98 @@ class Collision1DScene(Scene):
         self.play(GrowArrow(v1f_arrow), Write(v1f_lbl), GrowArrow(v2f_arrow), Write(v2f_lbl))
 
         self.wait(1)
+
+class AtwoodMachineScene(Scene):
+    def construct(self):
+        import json, os
+        input_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "anim_input.json")
+        if not os.path.exists(input_path):
+            raise FileNotFoundError("anim_input.json tidak ditemukan")
+        with open(input_path, "r") as f:
+            data = json.load(f)
+        params = data.get("parameters", {})
+        hasil = data.get("hasil_fisika", {})
+        vectors = data.get("vectors_to_render", [])
+
+        m1 = params.get("massa_1", 1)
+        m2 = params.get("massa_2", 1)
+        a = hasil.get("percepatan", 0)
+        T = hasil.get("tegangan", 0)
+        arah = hasil.get("arah_gerak", "diam")
+
+        # Layout: katrol di tengah atas
+        katrol = Circle(radius=0.5, color=WHITE).shift(UP*2.5)
+        self.play(Create(katrol))
+
+        # Posisi awal massa
+        y1_start = -1.0
+        y2_start = -1.0
+        m1_square = Square(side_length=0.7, fill_opacity=0.6, color=BLUE).shift(LEFT*2.5 + DOWN*y1_start)
+        m2_square = Square(side_length=0.7, fill_opacity=0.6, color=RED).shift(RIGHT*2.5 + DOWN*y2_start)
+        self.play(FadeIn(m1_square), FadeIn(m2_square))
+
+        # Label massa
+        label1 = Text(f"m1={m1}kg", font_size=20).next_to(m1_square, DOWN)
+        label2 = Text(f"m2={m2}kg", font_size=20).next_to(m2_square, DOWN)
+        self.play(Write(label1), Write(label2))
+
+        # Tali: dari pusat katrol ke masing-masing pusat massa
+        tali1 = Line(katrol.get_center(), m1_square.get_center(), color=WHITE)
+        tali2 = Line(katrol.get_center(), m2_square.get_center(), color=WHITE)
+        self.play(Create(tali1), Create(tali2))
+
+        # Vektor tegangan tali (absolute_up) menggunakan make_label dan resolve_direction
+        from renderer_registry import resolve_direction, SUPPORTED_COLORS
+        from renderer import make_label  # fungsi make_label ada di renderer.py
+        bx = RIGHT  # basis tidak penting karena absolute_up tidak bergantung
+        by = UP
+        for vec in vectors:
+            try:
+                dir_vec = resolve_direction(vec, bx, by)
+            except ValueError:
+                continue
+            color_name = vec.get("color", "WHITE")
+            if color_name not in SUPPORTED_COLORS:
+                continue
+            col = MANIM_COLORS[color_name]
+            # T1 ditempatkan pada m1, T2 pada m2
+            if vec["id"] == "T1":
+                arrow = Arrow(ORIGIN, 1.5 * dir_vec, buff=0, color=col, stroke_width=4)
+                arrow.next_to(m1_square, UP, buff=0.2)
+                lbl = make_label(vec["label"], col, font_size=18)
+                lbl.next_to(arrow, UP, buff=0.1)
+                arrow.add_updater(lambda m: m.next_to(m1_square, UP, buff=0.2))
+                lbl.add_updater(lambda m, a=arrow: m.next_to(a, UP, buff=0.1))
+                self.add(arrow, lbl)
+                self.play(GrowArrow(arrow), Write(lbl))
+            elif vec["id"] == "T2":
+                arrow = Arrow(ORIGIN, 1.5 * dir_vec, buff=0, color=col, stroke_width=4)
+                arrow.next_to(m2_square, UP, buff=0.2)
+                lbl = make_label(vec["label"], col, font_size=18)
+                lbl.next_to(arrow, UP, buff=0.1)
+                arrow.add_updater(lambda m: m.next_to(m2_square, UP, buff=0.2))
+                lbl.add_updater(lambda m, a=arrow: m.next_to(a, UP, buff=0.1))
+                self.add(arrow, lbl)
+                self.play(GrowArrow(arrow), Write(lbl))
+
+        # Animasi gerak
+        if arah != "diam":
+            # durasi gerak, misal 3 detik
+            runtime = 3.0
+            # jarak yang ditempuh: 0.5 * a * t^2
+            distance = 0.5 * abs(a) * runtime**2
+            if arah == "m2_turun":
+                m1_target = m1_square.get_center() + UP * distance
+                m2_target = m2_square.get_center() + DOWN * distance
+            else:
+                m1_target = m1_square.get_center() + DOWN * distance
+                m2_target = m2_square.get_center() + UP * distance
+            self.play(
+                m1_square.animate.move_to(m1_target),
+                m2_square.animate.move_to(m2_target),
+                run_time=runtime,
+                rate_func=linear
+            )
+        else:
+            self.wait(1)
+        self.wait(1.5)

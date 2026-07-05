@@ -7,6 +7,7 @@ import shutil
 MOTION_TO_SCENE = {
     "static_incline": "InclinedPlaneScene",
     "collision_1d": "Collision1DScene",
+    "katrol_atwood": "AtwoodMachineScene",
 }
 
 def preflight_check_latex():
