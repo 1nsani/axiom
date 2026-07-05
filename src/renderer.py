@@ -1,18 +1,13 @@
 from manim import *
-import json
-import numpy as np
-import os
-import re
-from renderer_registry import SUPPORTED_DIRECTIONS, SUPPORTED_COLORS, vektor_normal, vektor_paralel
+import json, numpy as np, os, re
+from renderer_registry import (
+    SUPPORTED_DIRECTIONS, SUPPORTED_COLORS,
+    resolve_direction, basis_dari_sudut
+)
 
 MANIM_COLORS = {
-    "GREEN": GREEN,
-    "YELLOW": YELLOW,
-    "RED": RED,
-    "BLUE": BLUE,
-    "WHITE": WHITE,
-    "ORANGE": ORANGE,
-    "PURPLE": PURPLE,
+    "GREEN": GREEN, "YELLOW": YELLOW, "RED": RED,
+    "BLUE": BLUE, "WHITE": WHITE, "ORANGE": ORANGE, "PURPLE": PURPLE,
 }
 
 def _latex_to_plain(latex_str: str) -> str:
@@ -20,7 +15,6 @@ def _latex_to_plain(latex_str: str) -> str:
     return re.sub(r"[{}]", "", s)
 
 def make_label(latex_str: str, color, font_size=20):
-    """Coba MathTex, fallback ke Text jika gagal."""
     try:
         lbl = MathTex(latex_str, color=color)
         lbl.scale(font_size / 24)
@@ -32,10 +26,7 @@ def make_label(latex_str: str, color, font_size=20):
 
 class InclinedPlaneScene(Scene):
     def construct(self):
-        input_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "anim_input.json"
-        )
+        input_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "anim_input.json")
         if not os.path.exists(input_path):
             raise FileNotFoundError(f"anim_input.json tidak ditemukan di {input_path}")
 
@@ -55,7 +46,10 @@ class InclinedPlaneScene(Scene):
 
         print(f"[DEBUG] Scene: massa={massa}, sudut={theta_deg}°, a={percepatan}, arah={arah_gerak}")
 
-        # Bidang miring
+        # Basis lokal
+        bx, by = basis_dari_sudut(theta_rad)
+
+        # Gambar bidang miring
         bidang_miring = Line(ORIGIN, 7 * RIGHT).rotate(theta_rad, about_point=ORIGIN).shift(LEFT*3 + DOWN*1)
         base_line = Line(bidang_miring.get_start(), bidang_miring.get_start() + 7 * RIGHT)
         angle_arc = Angle(base_line, bidang_miring, radius=0.8)
@@ -67,8 +61,7 @@ class InclinedPlaneScene(Scene):
         balok = Square(side_length=0.8, fill_opacity=0.6, color=BLUE)
         balok.rotate(theta_rad)
         start_prop = 0.15
-        vn = vektor_normal(theta_rad)
-        start_point = bidang_miring.point_from_proportion(start_prop) + (0.4 * vn)
+        start_point = bidang_miring.point_from_proportion(start_prop) + (0.4 * by)
         balok.move_to(start_point)
 
         # HUD
@@ -93,43 +86,51 @@ class InclinedPlaneScene(Scene):
             self.add(arrow, lbl)
             self.play(GrowArrow(arrow), Write(lbl), run_time=0.4)
 
-        # Gambar vektor dari metadata menggunakan registry
+        # Gambar vektor dari metadata
         for vec in vectors:
-            logic = vec.get("direction_logic")
-            color_name = vec.get("color", "WHITE")
-            if logic not in SUPPORTED_DIRECTIONS:
-                print(f"[SKIP] direction_logic '{logic}' tidak didukung")
+            if vec.get("id") == "F_ext" and params.get("gaya_eksternal", 0) == 0:
                 continue
+            try:
+                dir_vec = resolve_direction(vec, bx, by)
+            except ValueError as e:
+                print(f"[SKIP] {e}")
+                continue
+
+            color_name = vec.get("color", "WHITE")
             if color_name not in SUPPORTED_COLORS:
                 print(f"[SKIP] color '{color_name}' tidak didukung")
                 continue
-            if vec.get("id") == "F_ext" and params.get("gaya_eksternal", 0) == 0:
-                continue
-
-            dir_vec = SUPPORTED_DIRECTIONS[logic](theta_rad)
             col = MANIM_COLORS[color_name]
 
-            if logic in ("parallel_up", "parallel_down"):
-                off = 0.8 if logic == "parallel_up" else 0.6
+            # Atur offset
+            off = 0.75
+            logic = vec.get("direction_logic")
+            if logic == "parallel_up":
+                off = 0.8
+            elif logic == "parallel_down":
+                off = 0.6
             elif logic in ("perpendicular_up", "perpendicular_down"):
                 off = 0.6 if logic == "perpendicular_up" else 0.7
             elif logic == "absolute_down":
                 off = 0.7
-            else:
-                off = 0.75
+
             _draw_vector(dir_vec, col, vec["label"], offset_factor=off)
 
         # Gaya gesek
         if gaya_gesek > 1e-6:
             if arah_gerak == "ke_atas":
-                gesek_dir = SUPPORTED_DIRECTIONS["parallel_down"](theta_rad)
+                logic = "parallel_down"
             elif arah_gerak == "ke_bawah":
-                gesek_dir = SUPPORTED_DIRECTIONS["parallel_up"](theta_rad)
+                logic = "parallel_up"
             else:
-                gesek_dir = SUPPORTED_DIRECTIONS["parallel_down"](theta_rad)
+                logic = "parallel_down"
+            try:
+                gesek_dir = resolve_direction({"direction_logic": logic}, bx, by)
+            except ValueError:
+                gesek_dir = -bx
             _draw_vector(gesek_dir, PURPLE, "f_{\\text{gesek}}", offset_factor=0.9)
 
-        # Gerakan balok
+        # Gerakan
         if arah_gerak == "ke_bawah":
             target_prop = 0.0
         elif arah_gerak == "ke_atas":
@@ -137,39 +138,31 @@ class InclinedPlaneScene(Scene):
         else:
             target_prop = start_prop
 
-        target_pos = bidang_miring.point_from_proportion(target_prop) + (0.4 * vn)
+        target_pos = bidang_miring.point_from_proportion(target_prop) + (0.4 * by)
 
         if arah_gerak != "diam" and abs(percepatan) > 1e-6:
             run_time = max(1.0, 6.0 / (abs(percepatan) + 1))
             self.play(balok.animate.move_to(target_pos), run_time=run_time, rate_func=linear)
         else:
             self.wait(1)
-
         self.wait(1.5)
 
 
 class Collision1DScene(Scene):
     def construct(self):
-        input_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "anim_input.json"
-        )
+        input_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "anim_input.json")
         with open(input_path, "r") as f:
             data = json.load(f)
 
         params = data["parameters"]
         hasil = data["hasil_fisika"]
 
-        m1 = params["massa_1"]
-        m2 = params["massa_2"]
-        v1_awal = params["v1_awal"]
-        v2_awal = params["v2_awal"]
-        v1_akhir = hasil["v1_akhir"]
-        v2_akhir = hasil["v2_akhir"]
+        m1, m2 = params["massa_1"], params["massa_2"]
+        v1_awal, v2_awal = params["v1_awal"], params["v2_awal"]
+        v1_akhir, v2_akhir = hasil["v1_akhir"], hasil["v2_akhir"]
 
         max_mass = max(m1, m2)
-        size1 = 0.6 + 0.3 * (m1 / max_mass)
-        size2 = 0.6 + 0.3 * (m2 / max_mass)
+        size1, size2 = 0.6 + 0.3 * (m1 / max_mass), 0.6 + 0.3 * (m2 / max_mass)
 
         balok1 = Square(side_length=size1, fill_opacity=0.6, color=BLUE).shift(LEFT * 3)
         balok2 = Square(side_length=size2, fill_opacity=0.6, color=RED).shift(RIGHT * 3)
@@ -194,8 +187,7 @@ class Collision1DScene(Scene):
         v2_arrow, v2_lbl = make_velocity_arrow(v2_awal, balok2, RED, "v_2")
         self.play(GrowArrow(v1_arrow), Write(v1_lbl), GrowArrow(v2_arrow), Write(v2_lbl))
 
-        half1 = size1 / 2
-        half2 = size2 / 2
+        half1, half2 = size1 / 2, size2 / 2
         jarak_awal = 6
         jarak_sentuh = jarak_awal - (half1 + half2)
         v_rel = v1_awal - v2_awal
@@ -205,12 +197,10 @@ class Collision1DScene(Scene):
 
         pos1_coll = balok1.get_center() + v1_awal * t_collision * RIGHT
         pos2_coll = balok2.get_center() + v2_awal * t_collision * RIGHT
-
         self.play(
             balok1.animate.move_to(pos1_coll),
             balok2.animate.move_to(pos2_coll),
-            run_time=t_collision,
-            rate_func=linear
+            run_time=t_collision, rate_func=linear
         )
 
         self.wait(0.5)
@@ -222,8 +212,7 @@ class Collision1DScene(Scene):
         self.play(
             balok1.animate.move_to(pos1_setelah),
             balok2.animate.move_to(pos2_setelah),
-            run_time=t_after,
-            rate_func=linear
+            run_time=t_after, rate_func=linear
         )
 
         v1f_arrow, v1f_lbl = make_velocity_arrow(v1_akhir, balok1, GREEN, "v'_1")
