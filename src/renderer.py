@@ -4,7 +4,7 @@ import numpy as np
 import os
 import re
 from renderer_registry import SUPPORTED_DIRECTIONS, SUPPORTED_COLORS, vektor_normal, vektor_paralel
-# Mapping dari nama warna (string) ke konstanta Manim
+
 MANIM_COLORS = {
     "GREEN": GREEN,
     "YELLOW": YELLOW,
@@ -20,6 +20,7 @@ def _latex_to_plain(latex_str: str) -> str:
     return re.sub(r"[{}]", "", s)
 
 def make_label(latex_str: str, color, font_size=20):
+    """Coba MathTex, fallback ke Text jika gagal."""
     try:
         lbl = MathTex(latex_str, color=color)
         lbl.scale(font_size / 24)
@@ -66,7 +67,8 @@ class InclinedPlaneScene(Scene):
         balok = Square(side_length=0.8, fill_opacity=0.6, color=BLUE)
         balok.rotate(theta_rad)
         start_prop = 0.15
-        start_point = bidang_miring.point_from_proportion(start_prop) + (0.4 * vektor_normal(theta_rad))
+        vn = vektor_normal(theta_rad)
+        start_point = bidang_miring.point_from_proportion(start_prop) + (0.4 * vn)
         balok.move_to(start_point)
 
         # HUD
@@ -76,7 +78,6 @@ class InclinedPlaneScene(Scene):
         ).arrange(DOWN, aligned_edge=LEFT).to_corner(UL)
         self.play(FadeIn(balok, shift=DOWN*0.5), Write(hud))
 
-        # Fungsi menggambar vektor
         def _draw_vector(direction, color, tex_label, offset_factor=0.75):
             arah = direction
             panjang = 1.5
@@ -97,19 +98,17 @@ class InclinedPlaneScene(Scene):
             logic = vec.get("direction_logic")
             color_name = vec.get("color", "WHITE")
             if logic not in SUPPORTED_DIRECTIONS:
-                print(f"[SKIP] direction_logic '{logic}' tidak didukung, vektor diabaikan.")
+                print(f"[SKIP] direction_logic '{logic}' tidak didukung")
                 continue
             if color_name not in SUPPORTED_COLORS:
-                print(f"[SKIP] color '{color_name}' tidak didukung, vektor diabaikan.")
+                print(f"[SKIP] color '{color_name}' tidak didukung")
                 continue
             if vec.get("id") == "F_ext" and params.get("gaya_eksternal", 0) == 0:
                 continue
 
-            # Dapatkan arah vektor dengan fungsi dari registry
             dir_vec = SUPPORTED_DIRECTIONS[logic](theta_rad)
             col = MANIM_COLORS[color_name]
 
-            # Atur offset berdasarkan logic
             if logic in ("parallel_up", "parallel_down"):
                 off = 0.8 if logic == "parallel_up" else 0.6
             elif logic in ("perpendicular_up", "perpendicular_down"):
@@ -120,7 +119,7 @@ class InclinedPlaneScene(Scene):
                 off = 0.75
             _draw_vector(dir_vec, col, vec["label"], offset_factor=off)
 
-        # Gaya gesek (jika ada)
+        # Gaya gesek
         if gaya_gesek > 1e-6:
             if arah_gerak == "ke_atas":
                 gesek_dir = SUPPORTED_DIRECTIONS["parallel_down"](theta_rad)
@@ -131,7 +130,6 @@ class InclinedPlaneScene(Scene):
             _draw_vector(gesek_dir, PURPLE, "f_{\\text{gesek}}", offset_factor=0.9)
 
         # Gerakan balok
-        vn = vektor_normal(theta_rad)
         if arah_gerak == "ke_bawah":
             target_prop = 0.0
         elif arah_gerak == "ke_atas":
@@ -151,7 +149,6 @@ class InclinedPlaneScene(Scene):
 
 
 class Collision1DScene(Scene):
-    # ... tetap sama seperti sebelumnya (tidak berubah)
     def construct(self):
         input_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -182,18 +179,19 @@ class Collision1DScene(Scene):
         label2 = Text(f"m2={m2} kg", font_size=20).next_to(balok2, DOWN)
         self.play(Write(label1), Write(label2))
 
-        def make_velocity_arrow(value, obj, color, label_text):
+        def make_velocity_arrow(value, obj, color, tex_label):
             arah = RIGHT if value >= 0 else LEFT
             panjang = abs(value) * 0.5
             arrow = Arrow(ORIGIN, arah * panjang, buff=0, color=color, stroke_width=4)
             arrow.next_to(obj, UP, buff=0.2)
-            lbl = Text(f"{label_text}={value:.1f}", font_size=16, color=color).next_to(arrow, UP, buff=0.05)
+            lbl = make_label(f"{tex_label}={value:.1f}", color, font_size=16)
+            lbl.next_to(arrow, UP, buff=0.05)
             arrow.add_updater(lambda m, o=obj: m.next_to(o, UP, buff=0.2))
             lbl.add_updater(lambda m, a=arrow: m.next_to(a, UP, buff=0.05))
             return arrow, lbl
 
-        v1_arrow, v1_lbl = make_velocity_arrow(v1_awal, balok1, GREEN, "v1")
-        v2_arrow, v2_lbl = make_velocity_arrow(v2_awal, balok2, RED, "v2")
+        v1_arrow, v1_lbl = make_velocity_arrow(v1_awal, balok1, GREEN, "v_1")
+        v2_arrow, v2_lbl = make_velocity_arrow(v2_awal, balok2, RED, "v_2")
         self.play(GrowArrow(v1_arrow), Write(v1_lbl), GrowArrow(v2_arrow), Write(v2_lbl))
 
         half1 = size1 / 2
@@ -228,8 +226,8 @@ class Collision1DScene(Scene):
             rate_func=linear
         )
 
-        v1f_arrow, v1f_lbl = make_velocity_arrow(v1_akhir, balok1, GREEN, "v1'")
-        v2f_arrow, v2f_lbl = make_velocity_arrow(v2_akhir, balok2, RED, "v2'")
+        v1f_arrow, v1f_lbl = make_velocity_arrow(v1_akhir, balok1, GREEN, "v'_1")
+        v2f_arrow, v2f_lbl = make_velocity_arrow(v2_akhir, balok2, RED, "v'_2")
         self.play(GrowArrow(v1f_arrow), Write(v1f_lbl), GrowArrow(v2f_arrow), Write(v2f_lbl))
 
         self.wait(1)
