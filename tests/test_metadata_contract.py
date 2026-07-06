@@ -1,6 +1,6 @@
 import os, sys, pytest, yaml
 
-AXIOM_KNOWLEDGE_PATH = os.environ.get("AXIOM_KNOWLEDGE_PATH", "/tmp/axiom/Axiom-knowledge")
+AXIOM_KNOWLEDGE_PATH = os.environ.get("AXIOM_KNOWLEDGE_PATH", "/tmp/Axiom-knowledge")
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from renderer_registry import SUPPORTED_DIRECTIONS, SUPPORTED_COLORS
 
@@ -34,8 +34,8 @@ def test_metadata_vectors_supported(md_file):
         logic = vec.get("direction_logic")
         if logic is not None:
             assert logic in SUPPORTED_DIRECTIONS, \
-                f"{md_file}: vektor '{vec_id}' pakai direction_logic '{logic}' tidak terdaftar"
+                f"{md_file}: vektor '{vec_id}' pakai direction_logic '{logic}' tidak terdaftar di renderer"
         color = vec.get("color")
         if color is not None:
             assert color in SUPPORTED_COLORS, \
-                f"{md_file}: vektor '{vec_id}' pakai color '{color}' tidak terdaftar"
+                f"{md_file}: vektor '{vec_id}' pakai color '{color}' tidak terdaftar di renderer"

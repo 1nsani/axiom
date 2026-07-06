@@ -386,14 +386,7 @@ class ProjectileScene(Scene):
 
 class Collision1DScene(Scene):
     def construct(self):
-        try:
-            self._construct_impl()
-        except Exception as e:
-            error_text = Text(f"Error: {str(e)[:100]}", font_size=24, color=RED)
-            error_text.move_to(ORIGIN)
-            self.add(error_text)
-            self.wait(2)
-            return
+        self._construct_impl()
 
     def _construct_impl(self):
         input_path = os.path.join(

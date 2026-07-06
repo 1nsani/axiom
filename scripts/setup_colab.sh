@@ -3,6 +3,7 @@ set -e
 
 AXIOM_PATH="/tmp/axiom"
 AXIOM_KNOWLEDGE_PATH="/tmp/Axiom-knowledge"
+export AXIOM_KNOWLEDGE_PATH="$AXIOM_KNOWLEDGE_PATH"
 REPO_AXIOM="https://github.com/1nsani/axiom.git"
 REPO_KNOWLEDGE="https://github.com/1nsani/Axiom-knowledge.git"
 
