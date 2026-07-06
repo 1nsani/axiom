@@ -221,9 +221,32 @@ class Collision1DScene(Scene):
 
         self.wait(1)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class AtwoodMachineScene(Scene):
     def construct(self):
-        import json, os
+        import json, os, numpy as np
         input_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "anim_input.json")
         if not os.path.exists(input_path):
             raise FileNotFoundError("anim_input.json tidak ditemukan")
@@ -239,79 +262,145 @@ class AtwoodMachineScene(Scene):
         T = hasil.get("tegangan", 0)
         arah = hasil.get("arah_gerak", "diam")
 
-        # Layout: katrol di tengah atas
-        katrol = Circle(radius=0.5, color=WHITE).shift(UP*2.5)
-        self.play(Create(katrol))
+        self.camera.background_color = "#1e1e1e"
 
-        # Posisi awal massa
-        y1_start = -1.0
-        y2_start = -1.0
-        m1_square = Square(side_length=0.7, fill_opacity=0.6, color=BLUE).shift(LEFT*2.5 + DOWN*y1_start)
-        m2_square = Square(side_length=0.7, fill_opacity=0.6, color=RED).shift(RIGHT*2.5 + DOWN*y2_start)
-        self.play(FadeIn(m1_square), FadeIn(m2_square))
+        # Katrol
+        pulley_center = UP * 2.5
+        katrol = Circle(radius=0.6, color=WHITE, stroke_width=4).move_to(pulley_center)
+        penyangga = Line(pulley_center + UP*0.4, pulley_center + UP*1.5, color=GREY, stroke_width=4)
+        self.play(Create(katrol), Create(penyangga))
 
-        # Label massa
-        label1 = Text(f"m1={m1}kg", font_size=20).next_to(m1_square, DOWN)
-        label2 = Text(f"m2={m2}kg", font_size=20).next_to(m2_square, DOWN)
-        self.play(Write(label1), Write(label2))
+        # Titik singgung tali
+        left_rope_end = pulley_center + LEFT * 0.6 + DOWN * 0.05
+        right_rope_end = pulley_center + RIGHT * 0.6 + DOWN * 0.05
 
-        # Tali: dari pusat katrol ke masing-masing pusat massa
-        tali1 = Line(katrol.get_center(), m1_square.get_center(), color=WHITE)
-        tali2 = Line(katrol.get_center(), m2_square.get_center(), color=WHITE)
-        self.play(Create(tali1), Create(tali2))
+        # Posisi awal balok
+        m1_start_y = -1.0
+        m2_start_y = -1.0
+        m1_start = np.array([left_rope_end[0], m1_start_y, 0])
+        m2_start = np.array([right_rope_end[0], m2_start_y, 0])
 
-        # Vektor tegangan tali (absolute_up) menggunakan make_label dan resolve_direction
+        # Garis nol (y = -1.0)
+        zero_line_y = m1_start_y
+        zero_line = DashedLine(LEFT*5 + UP*zero_line_y, RIGHT*5 + UP*zero_line_y, color=GREY, dash_length=0.2)
+        zero_label = Text("y = 0", font_size=18, color=GREY).next_to(zero_line, RIGHT, buff=0.2)
+        self.add(zero_line, zero_label)
+
+        # Balok
+        side_length = 0.8
+        m1_sq = Square(side_length=side_length, fill_opacity=0.9, color=BLUE, stroke_color=WHITE, stroke_width=2).move_to(m1_start)
+        m2_sq = Square(side_length=side_length, fill_opacity=0.9, color=RED, stroke_color=WHITE, stroke_width=2).move_to(m2_start)
+
+        label_m1 = Text(f"m1={m1}kg", font_size=22, color=WHITE).next_to(m1_sq, LEFT, buff=0.4)
+        label_m2 = Text(f"m2={m2}kg", font_size=22, color=WHITE).next_to(m2_sq, RIGHT, buff=0.4)
+        self.play(FadeIn(m1_sq), FadeIn(m2_sq), Write(label_m1), Write(label_m2))
+
+        # Tali
+        tali_kiri = Line(left_rope_end, m1_sq.get_top(), color=WHITE, stroke_width=3)
+        tali_kanan = Line(right_rope_end, m2_sq.get_top(), color=WHITE, stroke_width=3)
+        tali_kiri.add_updater(lambda l: l.put_start_and_end_on(left_rope_end, m1_sq.get_top()))
+        tali_kanan.add_updater(lambda l: l.put_start_and_end_on(right_rope_end, m2_sq.get_top()))
+        self.add(tali_kiri, tali_kanan)
+
+        # FBD (T1, T2, W1, W2)
+        from renderer import make_label
         from renderer_registry import resolve_direction, SUPPORTED_COLORS
-        from renderer import make_label  # fungsi make_label ada di renderer.py
-        bx = RIGHT  # basis tidak penting karena absolute_up tidak bergantung
-        by = UP
+        bx, by = RIGHT, UP
         for vec in vectors:
-            try:
-                dir_vec = resolve_direction(vec, bx, by)
-            except ValueError:
-                continue
+            vec_id = vec.get("id")
+            logic = vec.get("direction_logic")
             color_name = vec.get("color", "WHITE")
-            if color_name not in SUPPORTED_COLORS:
+            if logic not in SUPPORTED_DIRECTIONS or color_name not in SUPPORTED_COLORS:
                 continue
+            dir_vec = resolve_direction({"direction_logic": logic}, bx, by)
             col = MANIM_COLORS[color_name]
-            # T1 ditempatkan pada m1, T2 pada m2
-            if vec["id"] == "T1":
-                arrow = Arrow(ORIGIN, 1.5 * dir_vec, buff=0, color=col, stroke_width=4)
-                arrow.next_to(m1_square, UP, buff=0.2)
-                lbl = make_label(vec["label"], col, font_size=18)
-                lbl.next_to(arrow, UP, buff=0.1)
-                arrow.add_updater(lambda m: m.next_to(m1_square, UP, buff=0.2))
-                lbl.add_updater(lambda m, a=arrow: m.next_to(a, UP, buff=0.1))
-                self.add(arrow, lbl)
-                self.play(GrowArrow(arrow), Write(lbl))
-            elif vec["id"] == "T2":
-                arrow = Arrow(ORIGIN, 1.5 * dir_vec, buff=0, color=col, stroke_width=4)
-                arrow.next_to(m2_square, UP, buff=0.2)
-                lbl = make_label(vec["label"], col, font_size=18)
-                lbl.next_to(arrow, UP, buff=0.1)
-                arrow.add_updater(lambda m: m.next_to(m2_square, UP, buff=0.2))
-                lbl.add_updater(lambda m, a=arrow: m.next_to(a, UP, buff=0.1))
-                self.add(arrow, lbl)
-                self.play(GrowArrow(arrow), Write(lbl))
-
-        # Animasi gerak
-        if arah != "diam":
-            # durasi gerak, misal 3 detik
-            runtime = 3.0
-            # jarak yang ditempuh: 0.5 * a * t^2
-            distance = 0.5 * abs(a) * runtime**2
-            if arah == "m2_turun":
-                m1_target = m1_square.get_center() + UP * distance
-                m2_target = m2_square.get_center() + DOWN * distance
+            target = m1_sq if vec_id in ("T1", "W1") else m2_sq
+            if "up" in logic:
+                arrow = Arrow(ORIGIN, 1.8 * dir_vec, buff=0, color=col, stroke_width=5)
+                arrow.next_to(target, UP, buff=0.2)
             else:
-                m1_target = m1_square.get_center() + DOWN * distance
-                m2_target = m2_square.get_center() + UP * distance
-            self.play(
-                m1_square.animate.move_to(m1_target),
-                m2_square.animate.move_to(m2_target),
-                run_time=runtime,
-                rate_func=linear
-            )
-        else:
-            self.wait(1)
-        self.wait(1.5)
+                arrow = Arrow(ORIGIN, 1.8 * dir_vec, buff=0, color=col, stroke_width=5)
+                arrow.next_to(target, DOWN, buff=0.2)
+            lbl = make_label(vec["label"], col, font_size=22)
+            lbl.next_to(arrow, dir_vec, buff=0.1)
+            if "up" in logic:
+                arrow.add_updater(lambda m, tgt=target, d=dir_vec: m.next_to(tgt, UP, buff=0.2))
+                lbl.add_updater(lambda m, a=arrow, d=dir_vec: m.next_to(a, d, buff=0.1))
+            else:
+                arrow.add_updater(lambda m, tgt=target, d=dir_vec: m.next_to(tgt, DOWN, buff=0.2))
+                lbl.add_updater(lambda m, a=arrow, d=dir_vec: m.next_to(a, d, buff=0.1))
+            self.add(arrow, lbl)
+
+        # HUD (a, T, y1, y2) di pojok kiri atas
+        hud_a = Text(f"a = {a:.2f} m/s²", font_size=28, color=YELLOW)
+        hud_T = Text(f"T = {T:.1f} N", font_size=28, color=YELLOW)
+        # y1 dan y2 akan diisi setelah gerakan, tetapi kita siapkan tempatnya
+        hud_y1 = Text("y1 = --- m", font_size=24, color=WHITE)
+        hud_y2 = Text("y2 = --- m", font_size=24, color=WHITE)
+
+        hud = VGroup(hud_a, hud_T, hud_y1, hud_y2).arrange(DOWN, aligned_edge=LEFT).to_corner(UL, buff=0.5)
+        # Tambahkan latar belakang semi‑transparan agar mudah dibaca
+        bg_hud = Rectangle(width=3.5, height=2.2, fill_opacity=0.4, fill_color=BLACK, stroke_width=0).move_to(hud)
+        self.play(FadeIn(bg_hud), Write(hud_a), Write(hud_T))
+        # y1, y2 kita tulis nanti
+
+        # --- Perhitungan batas gerak yang BENAR dengan margin lebih besar ---
+        top_m1 = m1_sq.get_center()[1] + side_length/2
+        top_m2 = m2_sq.get_center()[1] + side_length/2
+        dist_rope_to_top_m1 = left_rope_end[1] - top_m1
+        dist_rope_to_top_m2 = right_rope_end[1] - top_m2
+
+        safety_margin = 0.3  # margin lebih besar agar jelas tidak menempel
+        max_disp_m1_up = max(0, dist_rope_to_top_m1 - safety_margin)
+        max_disp_m2_up = max(0, dist_rope_to_top_m2 - safety_margin)
+
+        max_disp_down = abs(m1_start_y - (-5.0))  # = 4.0
+
+        allowed_disp = 0.0
+        if arah != "diam":
+            runtime = 4.0
+            desired_disp = 0.5 * abs(a) * runtime**2
+            if arah == "m2_turun":
+                up_disp = min(desired_disp, max_disp_m1_up)
+                down_disp = min(desired_disp, max_disp_down)
+                allowed_disp = min(up_disp, down_disp)
+                self.play(
+                    m1_sq.animate.shift(UP * allowed_disp),
+                    m2_sq.animate.shift(DOWN * allowed_disp),
+                    run_time=runtime,
+                    rate_func=linear
+                )
+            else:
+                up_disp = min(desired_disp, max_disp_m2_up)
+                down_disp = min(desired_disp, max_disp_down)
+                allowed_disp = min(up_disp, down_disp)
+                self.play(
+                    m1_sq.animate.shift(DOWN * allowed_disp),
+                    m2_sq.animate.shift(UP * allowed_disp),
+                    run_time=runtime,
+                    rate_func=linear
+                )
+
+        # Indikator ketinggian (garis putus-putus di SAMPING) — tetap seperti yang sudah oke
+        offset_x = 0.6
+        def get_vertical_line(obj, color, dx):
+            center = obj.get_center()
+            start = np.array([center[0] + dx, center[1], 0])
+            end = np.array([center[0] + dx, zero_line_y, 0])
+            return DashedLine(start, end, color=color, dash_length=0.15)
+
+        vert_m1 = get_vertical_line(m1_sq, BLUE, -offset_x)
+        vert_m2 = get_vertical_line(m2_sq, RED, offset_x)
+        self.play(Create(vert_m1), Create(vert_m2))
+
+        # Update HUD dengan nilai y1 dan y2
+        pos1_y = m1_sq.get_center()[1] - zero_line_y
+        pos2_y = m2_sq.get_center()[1] - zero_line_y
+        new_y1 = Text(f"y1 = {pos1_y:.2f} m", font_size=24, color=BLUE)
+        new_y2 = Text(f"y2 = {pos2_y:.2f} m", font_size=24, color=RED)
+        # Tempatkan di posisi yang sama dengan placeholder
+        new_y1.move_to(hud_y1)
+        new_y2.move_to(hud_y2)
+        self.play(Transform(hud_y1, new_y1), Transform(hud_y2, new_y2))
+
+        self.wait(2)
