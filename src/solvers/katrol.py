@@ -7,8 +7,7 @@ def solve_katrol(known: dict) -> dict:
     total_m = m1 + m2
     a = (m2 - m1) * g / total_m
     T = m1 * (g + a)
-    W1 = m1 * g
-    W2 = m2 * g
+    W1, W2 = m1 * g, m2 * g
     if a > 1e-9:
         arah = "m2_turun"
     elif a < -1e-9:
@@ -26,3 +25,14 @@ def solve_katrol(known: dict) -> dict:
         },
         "duration": 4.0,
     }
+
+def generate_caption(known: dict, hasil: dict) -> str:
+    m1, m2 = known.get("massa_1"), known.get("massa_2")
+    a = hasil["percepatan"]
+    T = hasil["tegangan"]
+    arah = hasil["arah_gerak"]
+    if arah == "diam":
+        return f"Sistem katrol seimbang: kedua massa {m1} kg dan {m2} kg sama, percepatan = 0, tegangan tali = {T:.2f} N."
+    else:
+        return (f"Massa {m2} kg lebih berat, sehingga sistem bergerak dengan {arah} dengan percepatan {a:.2f} m/s². "
+                f"Tegangan tali = {T:.2f} N.")

@@ -5,19 +5,14 @@ def solve_inclined_plane(known: dict) -> dict:
     theta_deg = known.get("sudut_permukaan")
     if m is None or theta_deg is None:
         raise ValueError("Parameter wajib 'massa' atau 'sudut_permukaan' tidak ada.")
-
     g = known.get("gravitasi", 10.0)
     mu = known.get("koefisien_gesek", 0.0)
     F_ext = known.get("gaya_eksternal", 0.0)
-
     theta = math.radians(theta_deg)
     W_paralel = m * g * math.sin(theta)
     N = m * g * math.cos(theta)
     f_max = mu * N
-
-    F_net = W_paralel - F_ext   # positif = ke bawah
-
-    # Toleransi untuk mengatasi floating point (contoh: F_net = -2e-16)
+    F_net = W_paralel - F_ext
     epsilon = 1e-9
     if abs(F_net) <= f_max + epsilon:
         a = 0.0
@@ -31,7 +26,6 @@ def solve_inclined_plane(known: dict) -> dict:
         else:
             a = (F_net + f_max) / m
             arah = "ke_atas"
-
     return {
         "motion_type": "static_incline",
         "hasil": {
@@ -43,3 +37,16 @@ def solve_inclined_plane(known: dict) -> dict:
         },
         "duration": 4.0,
     }
+
+def generate_caption(known: dict, hasil: dict) -> str:
+    a = hasil.get("percepatan", 0)
+    arah = hasil.get("arah_gerak", "diam")
+    f_gesek = hasil.get("gaya_gesek", 0)
+    N = hasil.get("gaya_normal", 0)
+    if arah == "diam":
+        return (f"Balok diam karena resultan gaya sejajar bidang tidak cukup "
+                f"untuk mengatasi gesekan (gaya gesek = {f_gesek:.2f} N, "
+                f"gaya normal = {N:.2f} N).")
+    else:
+        return (f"Balok bergerak {arah} dengan percepatan {a:.2f} m/s². "
+                f"Gaya gesek kinetis = {f_gesek:.2f} N, gaya normal = {N:.2f} N.")
