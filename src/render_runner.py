@@ -8,6 +8,7 @@ MOTION_TO_SCENE = {
     "static_incline": "InclinedPlaneScene",
     "collision_1d": "Collision1DScene",
     "katrol_atwood": "AtwoodMachineScene",
+    "trajectory_2d": "ProjectileScene",
 }
 
 def preflight_check_latex():

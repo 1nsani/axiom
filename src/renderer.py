@@ -404,3 +404,75 @@ class AtwoodMachineScene(Scene):
         self.play(Transform(hud_y1, new_y1), Transform(hud_y2, new_y2))
 
         self.wait(2)
+
+
+class ProjectileScene(Scene):
+    def construct(self):
+        import json, os, numpy as np
+        input_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "anim_input.json")
+        if not os.path.exists(input_path):
+            raise FileNotFoundError("anim_input.json tidak ditemukan")
+        with open(input_path, "r") as f:
+            data = json.load(f)
+        params = data.get("parameters", {})
+        hasil = data.get("hasil_fisika", {})
+
+        v0 = params.get("v0", 1)
+        theta_deg = params.get("sudut_elevasi", 45)
+        R = hasil.get("jarak_horizontal_maks", 1)
+        h_max = hasil.get("tinggi_maksimum", 1)
+        t_total = hasil.get("waktu_di_udara", 1)
+        lintasan = hasil.get("titik_lintasan", [])
+
+        self.camera.background_color = "#1e1e1e"
+
+        # Konversi lintasan ke koordinat Manim (skala)
+        max_x = max(p[0] for p in lintasan) if lintasan else 1
+        max_y = max(p[1] for p in lintasan) if lintasan else 1
+        scale_x = 6.0 / max_x if max_x > 0 else 1
+        scale_y = 4.0 / max_y if max_y > 0 else 1
+        scale = min(scale_x, scale_y)
+
+        # Gambar lintasan sebagai kurva
+        points = [np.array([p[0] * scale, p[1] * scale, 0]) for p in lintasan]
+        # Pindahkan titik awal ke kiri bawah
+        offset = points[0] - np.array([-5.5, -2.5, 0])
+        points = [p - offset for p in points]
+
+        # Buat kurva lintasan
+        path = VMobject(color=YELLOW, stroke_width=3)
+        path.set_points_smoothly(points)
+        
+        # Titik awal dan akhir
+        titik_awal = Dot(points[0], color=GREEN, radius=0.1)
+        titik_akhir = Dot(points[-1], color=RED, radius=0.1)
+        titik_puncak_idx = max(range(len(points)), key=lambda i: points[i][1])
+        titik_puncak = Dot(points[titik_puncak_idx], color=ORANGE, radius=0.12)
+        
+        # Proyektil (bola kecil)
+        proyektil = Dot(points[0], color=WHITE, radius=0.15)
+
+        # Animasi
+        self.play(Create(path), run_time=2)
+        self.play(FadeIn(titik_awal), FadeIn(titik_akhir), FadeIn(titik_puncak))
+        
+        # Label
+        label_awal = Text(f"v0={v0} m/s, {theta_deg}°", font_size=20, color=GREEN).next_to(titik_awal, DOWN, buff=0.2)
+        label_puncak = Text(f"H={h_max:.1f} m", font_size=20, color=ORANGE).next_to(titik_puncak, UP, buff=0.2)
+        label_akhir = Text(f"R={R:.1f} m", font_size=20, color=RED).next_to(titik_akhir, DOWN, buff=0.2)
+        self.play(Write(label_awal), Write(label_puncak), Write(label_akhir))
+
+        # Gerakan proyektil sepanjang lintasan
+        self.play(MoveAlongPath(proyektil, path), run_time=4, rate_func=linear)
+
+        # HUD
+        hud = VGroup(
+            Text(f"v0 = {v0} m/s", font_size=24, color=WHITE),
+            Text(f"θ = {theta_deg}°", font_size=24, color=WHITE),
+            Text(f"R = {R:.1f} m", font_size=24, color=YELLOW),
+            Text(f"H = {h_max:.1f} m", font_size=24, color=YELLOW),
+            Text(f"t = {t_total:.2f} s", font_size=24, color=YELLOW)
+        ).arrange(DOWN, aligned_edge=LEFT).to_corner(UL, buff=0.5)
+        bg_hud = Rectangle(width=3.2, height=2.5, fill_opacity=0.5, fill_color=BLACK, stroke_width=0).move_to(hud)
+        self.play(FadeIn(bg_hud), Write(hud))
+        self.wait(2)
