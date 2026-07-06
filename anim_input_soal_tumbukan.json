@@ -1,0 +1,54 @@
+{
+    "motion_type": "collision_1d",
+    "parameters": {
+        "massa_1": 3,
+        "massa_2": 5,
+        "v1_awal": 4,
+        "v2_awal": -2,
+        "koefisien_restitusi": 0.8
+    },
+    "hasil_fisika": {
+        "v1_akhir": -2.75,
+        "v2_akhir": 2.05,
+        "energi_hilang": 12.15
+    },
+    "vectors_to_render": [
+        {
+            "id": "v1_before",
+            "type": "velocity_arrow",
+            "value_ref": "v1_awal",
+            "phase": "before",
+            "target": "balok1",
+            "color": "GREEN",
+            "label": "v_1"
+        },
+        {
+            "id": "v2_before",
+            "type": "velocity_arrow",
+            "value_ref": "v2_awal",
+            "phase": "before",
+            "target": "balok2",
+            "color": "RED",
+            "label": "v_2"
+        },
+        {
+            "id": "v1_after",
+            "type": "velocity_arrow",
+            "value_ref": "v1_akhir",
+            "phase": "after",
+            "target": "balok1",
+            "color": "GREEN",
+            "label": "v_1'"
+        },
+        {
+            "id": "v2_after",
+            "type": "velocity_arrow",
+            "value_ref": "v2_akhir",
+            "phase": "after",
+            "target": "balok2",
+            "color": "RED",
+            "label": "v_2'"
+        }
+    ],
+    "caption": "Tumbukan dengan koefisien restitusi 0.8: benda 1 (v = 4.0 m/s) dan benda 2 (v = -2.0 m/s) bertumbukan. Kecepatan akhir: v1' = -2.75 m/s, v2' = 2.05 m/s. Energi yang hilang = 12.15 J."
+}

@@ -1,0 +1,60 @@
+{
+    "motion_type": "static_incline",
+    "parameters": {
+        "massa": 5,
+        "sudut_permukaan": 37,
+        "gravitasi": 10
+    },
+    "hasil_fisika": {
+        "percepatan": 6.0182,
+        "arah_gerak": "ke_bawah",
+        "gaya_normal": 39.93,
+        "gaya_gesek": 0.0,
+        "gaya_eksternal": 0.0
+    },
+    "vectors_to_render": [
+        {
+            "id": "W",
+            "type": "arrow",
+            "direction_logic": "absolute_down",
+            "color": "RED",
+            "label": "\\vec{W}"
+        },
+        {
+            "id": "W_sin",
+            "type": "arrow",
+            "direction_logic": "parallel_down",
+            "color": "ORANGE",
+            "label": "W\\sin\\theta"
+        },
+        {
+            "id": "W_cos",
+            "type": "arrow",
+            "direction_logic": "perpendicular_down",
+            "color": "ORANGE",
+            "label": "W\\cos\\theta"
+        },
+        {
+            "id": "N",
+            "type": "arrow",
+            "direction_logic": "perpendicular_up",
+            "color": "YELLOW",
+            "label": "\\vec{N}"
+        },
+        {
+            "id": "F_ext",
+            "type": "arrow",
+            "direction_logic": "parallel_up",
+            "color": "GREEN",
+            "label": "F_{\\text{tarik}}"
+        },
+        {
+            "id": "F_45",
+            "type": "arrow",
+            "angle_deg": 45,
+            "color": "ORANGE",
+            "label": "F_{45}"
+        }
+    ],
+    "caption": "Balok bergerak ke_bawah dengan percepatan 6.02 m/s\u00b2. Gaya gesek kinetis = 0.00 N, gaya normal = 39.93 N."
+}

@@ -148,100 +148,6 @@ class InclinedPlaneScene(Scene):
         self.wait(1.5)
 
 
-class Collision1DScene(Scene):
-    def construct(self):
-        input_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "anim_input.json")
-        with open(input_path, "r") as f:
-            data = json.load(f)
-
-        params = data["parameters"]
-        hasil = data["hasil_fisika"]
-
-        m1, m2 = params["massa_1"], params["massa_2"]
-        v1_awal, v2_awal = params["v1_awal"], params["v2_awal"]
-        v1_akhir, v2_akhir = hasil["v1_akhir"], hasil["v2_akhir"]
-
-        max_mass = max(m1, m2)
-        size1, size2 = 0.6 + 0.3 * (m1 / max_mass), 0.6 + 0.3 * (m2 / max_mass)
-
-        balok1 = Square(side_length=size1, fill_opacity=0.6, color=BLUE).shift(LEFT * 3)
-        balok2 = Square(side_length=size2, fill_opacity=0.6, color=RED).shift(RIGHT * 3)
-        self.play(FadeIn(balok1), FadeIn(balok2))
-
-        label1 = Text(f"m1={m1} kg", font_size=20).next_to(balok1, DOWN)
-        label2 = Text(f"m2={m2} kg", font_size=20).next_to(balok2, DOWN)
-        self.play(Write(label1), Write(label2))
-
-        def make_velocity_arrow(value, obj, color, tex_label):
-            arah = RIGHT if value >= 0 else LEFT
-            panjang = abs(value) * 0.5
-            arrow = Arrow(ORIGIN, arah * panjang, buff=0, color=color, stroke_width=4)
-            arrow.next_to(obj, UP, buff=0.2)
-            lbl = make_label(f"{tex_label}={value:.1f}", color, font_size=16)
-            lbl.next_to(arrow, UP, buff=0.05)
-            arrow.add_updater(lambda m, o=obj: m.next_to(o, UP, buff=0.2))
-            lbl.add_updater(lambda m, a=arrow: m.next_to(a, UP, buff=0.05))
-            return arrow, lbl
-
-        v1_arrow, v1_lbl = make_velocity_arrow(v1_awal, balok1, GREEN, "v_1")
-        v2_arrow, v2_lbl = make_velocity_arrow(v2_awal, balok2, RED, "v_2")
-        self.play(GrowArrow(v1_arrow), Write(v1_lbl), GrowArrow(v2_arrow), Write(v2_lbl))
-
-        half1, half2 = size1 / 2, size2 / 2
-        jarak_awal = 6
-        jarak_sentuh = jarak_awal - (half1 + half2)
-        v_rel = v1_awal - v2_awal
-        if v_rel <= 0:
-            raise ValueError("Kecepatan relatif tidak positif.")
-        t_collision = min(jarak_sentuh / v_rel, 5)
-
-        pos1_coll = balok1.get_center() + v1_awal * t_collision * RIGHT
-        pos2_coll = balok2.get_center() + v2_awal * t_collision * RIGHT
-        self.play(
-            balok1.animate.move_to(pos1_coll),
-            balok2.animate.move_to(pos2_coll),
-            run_time=t_collision, rate_func=linear
-        )
-
-        self.wait(0.5)
-        self.remove(v1_arrow, v1_lbl, v2_arrow, v2_lbl)
-
-        t_after = 2
-        pos1_setelah = pos1_coll + v1_akhir * t_after * RIGHT
-        pos2_setelah = pos2_coll + v2_akhir * t_after * RIGHT
-        self.play(
-            balok1.animate.move_to(pos1_setelah),
-            balok2.animate.move_to(pos2_setelah),
-            run_time=t_after, rate_func=linear
-        )
-
-        v1f_arrow, v1f_lbl = make_velocity_arrow(v1_akhir, balok1, GREEN, "v'_1")
-        v2f_arrow, v2f_lbl = make_velocity_arrow(v2_akhir, balok2, RED, "v'_2")
-        self.play(GrowArrow(v1f_arrow), Write(v1f_lbl), GrowArrow(v2f_arrow), Write(v2f_lbl))
-
-        self.wait(1)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 class AtwoodMachineScene(Scene):
@@ -476,3 +382,108 @@ class ProjectileScene(Scene):
         bg_hud = Rectangle(width=3.2, height=2.5, fill_opacity=0.5, fill_color=BLACK, stroke_width=0).move_to(hud)
         self.play(FadeIn(bg_hud), Write(hud))
         self.wait(2)
+
+
+class Collision1DScene(Scene):
+    def construct(self):
+        try:
+            self._construct_impl()
+        except Exception as e:
+            error_text = Text(f"Error: {str(e)[:100]}", font_size=24, color=RED)
+            error_text.move_to(ORIGIN)
+            self.add(error_text)
+            self.wait(2)
+            return
+
+    def _construct_impl(self):
+        input_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "anim_input.json"
+        )
+        if not os.path.exists(input_path):
+            raise FileNotFoundError("anim_input.json tidak ditemukan")
+
+        with open(input_path, "r") as f:
+            data = json.load(f)
+
+        params = data.get("parameters", {})
+        hasil = data.get("hasil_fisika", {})
+        vectors = data.get("vectors_to_render", [])
+
+        # Pastikan parameter wajib ada
+        required = ["massa_1", "massa_2", "v1_awal", "v2_awal", "koefisien_restitusi"]
+        for k in required:
+            if k not in params:
+                raise KeyError(f"Parameter '{k}' tidak ditemukan di anim_input.json")
+
+        m1 = params["massa_1"]
+        m2 = params["massa_2"]
+        v1_awal = params["v1_awal"]
+        v2_awal = params["v2_awal"]
+        e = params["koefisien_restitusi"]
+        v1_akhir = hasil.get("v1_akhir", 0)
+        v2_akhir = hasil.get("v2_akhir", 0)
+
+        max_mass = max(m1, m2)
+        size1 = 0.6 + 0.3 * (m1 / max_mass)
+        size2 = 0.6 + 0.3 * (m2 / max_mass)
+
+        balok1 = Square(side_length=size1, fill_opacity=0.6, color=BLUE).shift(LEFT * 3)
+        balok2 = Square(side_length=size2, fill_opacity=0.6, color=RED).shift(RIGHT * 3)
+        self.play(FadeIn(balok1), FadeIn(balok2))
+
+        label1 = Text(f"m1={m1} kg", font_size=20).next_to(balok1, DOWN)
+        label2 = Text(f"m2={m2} kg", font_size=20).next_to(balok2, DOWN)
+        self.play(Write(label1), Write(label2))
+
+        def make_velocity_arrow(value, obj, color, label_text):
+            arah = RIGHT if value >= 0 else LEFT
+            panjang = abs(value) * 0.5
+            arrow = Arrow(ORIGIN, arah * panjang, buff=0, color=color, stroke_width=4)
+            arrow.next_to(obj, UP, buff=0.2)
+            lbl = Text(f"{label_text}={value:.1f}", font_size=16, color=color).next_to(arrow, UP, buff=0.05)
+            arrow.add_updater(lambda m, o=obj: m.next_to(o, UP, buff=0.2))
+            lbl.add_updater(lambda m, a=arrow: m.next_to(a, UP, buff=0.05))
+            return arrow, lbl
+
+        v1_arrow, v1_lbl = make_velocity_arrow(v1_awal, balok1, GREEN, "v1")
+        v2_arrow, v2_lbl = make_velocity_arrow(v2_awal, balok2, RED, "v2")
+        self.play(GrowArrow(v1_arrow), Write(v1_lbl), GrowArrow(v2_arrow), Write(v2_lbl))
+
+        half1 = size1 / 2
+        half2 = size2 / 2
+        jarak_awal = 6
+        jarak_sentuh = jarak_awal - (half1 + half2)
+        v_rel = v1_awal - v2_awal
+        if v_rel <= 0:
+            raise ValueError("Kecepatan relatif tidak positif.")
+
+        t_collision = min(jarak_sentuh / v_rel, 5)
+        pos1_coll = balok1.get_center() + v1_awal * t_collision * RIGHT
+        pos2_coll = balok2.get_center() + v2_awal * t_collision * RIGHT
+
+        self.play(
+            balok1.animate.move_to(pos1_coll),
+            balok2.animate.move_to(pos2_coll),
+            run_time=t_collision,
+            rate_func=linear
+        )
+
+        self.wait(0.5)
+        self.remove(v1_arrow, v1_lbl, v2_arrow, v2_lbl)
+
+        t_after = 2
+        pos1_setelah = balok1.get_center() + v1_akhir * t_after * RIGHT
+        pos2_setelah = balok2.get_center() + v2_akhir * t_after * RIGHT
+        self.play(
+            balok1.animate.move_to(pos1_setelah),
+            balok2.animate.move_to(pos2_setelah),
+            run_time=t_after,
+            rate_func=linear
+        )
+
+        v1f_arrow, v1f_lbl = make_velocity_arrow(v1_akhir, balok1, GREEN, "v1'")
+        v2f_arrow, v2f_lbl = make_velocity_arrow(v2_akhir, balok2, RED, "v2'")
+        self.play(GrowArrow(v1f_arrow), Write(v1f_lbl), GrowArrow(v2f_arrow), Write(v2f_lbl))
+
+        self.wait(1)
