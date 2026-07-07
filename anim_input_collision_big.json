@@ -1,0 +1,17 @@
+{
+    "motion_type": "collision_1d",
+    "parameters": {
+        "massa_1": 2,
+        "massa_2": 2,
+        "v1_awal": 10,
+        "v2_awal": 0,
+        "koefisien_restitusi": 1.0
+    },
+    "hasil_fisika": {
+        "v1_akhir": 0.0,
+        "v2_akhir": 10.0,
+        "energi_hilang": 0.0
+    },
+    "vectors_to_render": [],
+    "caption": "Tumbukan elastis sempurna: benda 1 (v = 10.0 m/s) dan benda 2 (v = 0.0 m/s) bertumbukan. Kecepatan akhir: v1' = 0.00 m/s, v2' = 10.00 m/s. Energi yang hilang = 0.00 J."
+}

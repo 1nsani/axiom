@@ -24,7 +24,7 @@ def make_label(latex_str: str, color, font_size=20):
         print(f"[WARN] MathTex gagal untuk '{latex_str}', fallback Text: '{plain}' ({e})")
         return Text(plain, font_size=font_size, color=color)
 
-class InclinedPlaneScene(Scene):
+class InclinedPlaneScene(MovingCameraScene):
     def construct(self):
         input_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "anim_input.json")
         if not os.path.exists(input_path):
@@ -45,6 +45,8 @@ class InclinedPlaneScene(Scene):
         gaya_gesek = hasil_fisika.get("gaya_gesek", 0)
 
         print(f"[DEBUG] Scene: massa={massa}, sudut={theta_deg}°, a={percepatan}, arah={arah_gerak}")
+        from scene_bounds import apply_auto_framing
+        apply_auto_framing(self, "static_incline", params, hasil_fisika)
 
         # Basis lokal
         bx, by = basis_dari_sudut(theta_rad)
@@ -150,7 +152,7 @@ class InclinedPlaneScene(Scene):
 
 
 
-class AtwoodMachineScene(Scene):
+class AtwoodMachineScene(MovingCameraScene):
     def construct(self):
         import json, os, numpy as np
         input_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "anim_input.json")
@@ -168,6 +170,8 @@ class AtwoodMachineScene(Scene):
         T = hasil.get("tegangan", 0)
         arah = hasil.get("arah_gerak", "diam")
 
+        from scene_bounds import apply_auto_framing
+        apply_auto_framing(self, "katrol_atwood", params, hasil)
         self.camera.background_color = "#1e1e1e"
 
         # Katrol
@@ -312,7 +316,7 @@ class AtwoodMachineScene(Scene):
         self.wait(2)
 
 
-class ProjectileScene(Scene):
+class ProjectileScene(MovingCameraScene):
     def construct(self):
         import json, os, numpy as np
         input_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "anim_input.json")
@@ -330,6 +334,8 @@ class ProjectileScene(Scene):
         t_total = hasil.get("waktu_di_udara", 1)
         lintasan = hasil.get("titik_lintasan", [])
 
+        from scene_bounds import apply_auto_framing
+        apply_auto_framing(self, "trajectory_2d", params, hasil)
         self.camera.background_color = "#1e1e1e"
 
         # Konversi lintasan ke koordinat Manim (skala)
@@ -384,7 +390,7 @@ class ProjectileScene(Scene):
         self.wait(2)
 
 
-class Collision1DScene(Scene):
+class Collision1DScene(MovingCameraScene):
     def construct(self):
         self._construct_impl()
 

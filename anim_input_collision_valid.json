@@ -1,17 +1,17 @@
 {
     "motion_type": "collision_1d",
     "parameters": {
-        "massa_1": 3,
-        "massa_2": 5,
+        "massa_1": 2,
+        "massa_2": 2,
         "v1_awal": 4,
         "v2_awal": -2,
         "koefisien_restitusi": 0.8
     },
     "hasil_fisika": {
-        "v1_akhir": -2.75,
-        "v2_akhir": 2.05,
-        "energi_hilang": 12.15
+        "v1_akhir": -1.4,
+        "v2_akhir": 3.4,
+        "energi_hilang": 6.48
     },
     "vectors_to_render": [],
-    "caption": "Tumbukan dengan koefisien restitusi 0.8: benda 1 (v = 4.0 m/s) dan benda 2 (v = -2.0 m/s) bertumbukan. Kecepatan akhir: v1' = -2.75 m/s, v2' = 2.05 m/s. Energi yang hilang = 12.15 J."
+    "caption": "Tumbukan dengan koefisien restitusi 0.8: benda 1 (v = 4.0 m/s) dan benda 2 (v = -2.0 m/s) bertumbukan. Kecepatan akhir: v1' = -1.40 m/s, v2' = 3.40 m/s. Energi yang hilang = 6.48 J."
 }
