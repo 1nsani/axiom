@@ -75,22 +75,52 @@ class InclinedPlaneScene(MovingCameraScene):
         ).arrange(DOWN, aligned_edge=LEFT).to_corner(UL)
         self.play(FadeIn(balok, shift=DOWN*0.5), Write(hud))
 
-        def _draw_vector(direction, color, tex_label, offset_factor=0.75, length=1.5):
+        def _draw_vector(direction, color, tex_label, offset_factor=0.75, length=1.5, label_pos=None):
             arah = direction
             panjang = length
             arrow = Arrow(ORIGIN, panjang * arah, buff=0, color=color, stroke_width=4)
             offset = offset_factor * arah
             arrow.move_to(balok.get_center() + offset)
             lbl = make_label(tex_label, color, font_size=18)
-            lbl.move_to(arrow.get_end() + 0.3 * arah)
+            if label_pos is not None:
+                lbl.move_to(label_pos)
+            else:
+                lbl.move_to(arrow.get_end() + 0.3 * arah)
 
             arrow.add_updater(lambda m, o=offset: m.move_to(balok.get_center() + o))
-            lbl.add_updater(lambda m, p=arrow, av=arah: m.move_to(p.get_end() + 0.3 * av))
+            # Jika label_pos diberikan, updater label menggunakan offset tetap dari balok
+            if label_pos is not None:
+                offset_lbl = label_pos - balok.get_center()
+                lbl.add_updater(lambda m, off=offset_lbl: m.move_to(balok.get_center() + off))
+            else:
+                lbl.add_updater(lambda m, p=arrow, av=arah: m.move_to(p.get_end() + 0.3 * av))
 
             self.add(arrow, lbl)
             self.play(GrowArrow(arrow), Write(lbl), run_time=0.4)
 
         # Gambar vektor dari metadata
+        # --- Hitung tata letak label dengan force-directed ---
+        from label_layout import estimate_label_size, resolve_label_positions
+        label_anchors = {}
+        label_sizes = {}
+        for vec in vectors:
+            if vec.get("id") == "F_ext" and params.get("gaya_eksternal", 0) == 0:
+                continue
+            logic = vec.get("direction_logic")
+            if logic not in SUPPORTED_DIRECTIONS:
+                continue
+            dir_vec = resolve_direction(vec, bx, by)
+            off_temp = 0.75
+            if logic == "parallel_up": off_temp = 0.8
+            elif logic == "parallel_down": off_temp = 0.6
+            elif logic in ("perpendicular_up", "perpendicular_down"): off_temp = 0.6 if logic == "perpendicular_up" else 0.7
+            elif logic == "absolute_down": off_temp = 0.7
+            anchor = balok.get_center() + off_temp * dir_vec + 0.3 * dir_vec
+            label_anchors[vec["id"]] = anchor
+            label_sizes[vec["id"]] = estimate_label_size(vec["label"], 18)
+        final_positions = resolve_label_positions(label_anchors, label_sizes)
+        # --------------------------------------------------------
+
         for vec in vectors:
             if vec.get("id") == "F_ext" and params.get("gaya_eksternal", 0) == 0:
                 continue
@@ -118,7 +148,7 @@ class InclinedPlaneScene(MovingCameraScene):
             elif logic == "absolute_down":
                 off = 0.7
 
-            _draw_vector(dir_vec, col, vec["label"], offset_factor=off, length=panj)
+            _draw_vector(dir_vec, col, vec["label"], offset_factor=off, length=panj, label_pos=final_positions.get(vec["id"]))
 
         # Gaya gesek
         if gaya_gesek > 1e-6:
