@@ -30,3 +30,13 @@ def resolve_direction(vec_def: dict, bx: np.array, by: np.array) -> np.array:
         f"[ANTI-HALUSINASI] Definisi vektor tidak valid: {vec_def}. "
         f"Harus punya 'angle_deg' (numerik) atau 'direction_logic' yang dikenal."
     )
+
+
+def scale_vector_length(magnitude: float, all_magnitudes: list[float],
+                         min_len=0.4, max_len=2.0) -> float:
+    """Kembalikan panjang panah yang proporsional terhadap magnitudo."""
+    max_mag = max(all_magnitudes) if all_magnitudes else 1.0
+    if max_mag == 0:
+        return min_len
+    proporsi = magnitude / max_mag
+    return min_len + proporsi * (max_len - min_len)

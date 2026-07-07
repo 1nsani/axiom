@@ -9,6 +9,7 @@ def solve_inclined_plane(known: dict) -> dict:
     mu = known.get("koefisien_gesek", 0.0)
     F_ext = known.get("gaya_eksternal", 0.0)
     theta = math.radians(theta_deg)
+    W = m * g
     W_paralel = m * g * math.sin(theta)
     N = m * g * math.cos(theta)
     f_max = mu * N
@@ -34,6 +35,7 @@ def solve_inclined_plane(known: dict) -> dict:
             "gaya_normal": round(N, 2),
             "gaya_gesek": round(f_aktual, 2),
             "gaya_eksternal": F_ext,
+            "W": round(W, 2),          # baru
         },
         "duration": 4.0,
     }

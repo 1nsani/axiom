@@ -43,8 +43,6 @@ class InclinedPlaneScene(MovingCameraScene):
         percepatan = hasil_fisika.get("percepatan", 0)
         arah_gerak = hasil_fisika.get("arah_gerak", "diam")
         gaya_gesek = hasil_fisika.get("gaya_gesek", 0)
-        panj = 1.5  # default panjang panah
-        any_floor = False  # catatan visual jujur
 
         print(f"[DEBUG] Scene: massa={massa}, sudut={theta_deg}°, a={percepatan}, arah={arah_gerak}")
         from scene_bounds import apply_auto_framing
@@ -75,9 +73,9 @@ class InclinedPlaneScene(MovingCameraScene):
         ).arrange(DOWN, aligned_edge=LEFT).to_corner(UL)
         self.play(FadeIn(balok, shift=DOWN*0.5), Write(hud))
 
-        def _draw_vector(direction, color, tex_label, offset_factor=0.75, length=1.5):
+        def _draw_vector(direction, color, tex_label, offset_factor=0.75):
             arah = direction
-            panjang = length
+            panjang = 1.5
             arrow = Arrow(ORIGIN, panjang * arah, buff=0, color=color, stroke_width=4)
             offset = offset_factor * arah
             arrow.move_to(balok.get_center() + offset)
@@ -118,7 +116,7 @@ class InclinedPlaneScene(MovingCameraScene):
             elif logic == "absolute_down":
                 off = 0.7
 
-            _draw_vector(dir_vec, col, vec["label"], offset_factor=off, length=panj)
+            _draw_vector(dir_vec, col, vec["label"], offset_factor=off)
 
         # Gaya gesek
         if gaya_gesek > 1e-6:
@@ -216,21 +214,8 @@ class AtwoodMachineScene(MovingCameraScene):
 
         # FBD (T1, T2, W1, W2)
         from renderer import make_label
-        from renderer_registry import resolve_direction, SUPPORTED_COLORS, scale_vector_length
+        from renderer_registry import resolve_direction, SUPPORTED_COLORS
         bx, by = RIGHT, UP
-        # Kumpulkan magnitudo untuk scaling
-        all_magnitudes = []
-        for vec in vectors:
-            ref = vec.get("value_ref")
-            if ref:
-                val = None
-                if ref in params:
-                    val = params[ref]
-                elif ref in hasil:
-                    val = hasil[ref]
-                if val is not None and isinstance(val, (int, float)):
-                    all_magnitudes.append(abs(val))
-        any_floor = False
         for vec in vectors:
             vec_id = vec.get("id")
             logic = vec.get("direction_logic")
@@ -240,23 +225,8 @@ class AtwoodMachineScene(MovingCameraScene):
             dir_vec = resolve_direction({"direction_logic": logic}, bx, by)
             col = MANIM_COLORS[color_name]
             target = m1_sq if vec_id in ("T1", "W1") else m2_sq
-            # Hitung panjang proporsional
-            ref = vec.get("value_ref")
-            mag = None
-            if ref:
-                if ref in params:
-                    mag = abs(params[ref])
-                elif ref in hasil:
-                    mag = abs(hasil[ref])
-            if mag is not None and all_magnitudes:
-                panj = scale_vector_length(mag, all_magnitudes)
-            else:
-                panj = 1.8
-            if panj == 0.4 and mag is not None and mag > 0.1:
-                any_floor = True
-
             if "up" in logic:
-                arrow = Arrow(ORIGIN, panj * dir_vec, buff=0, color=col, stroke_width=5)
+                arrow = Arrow(ORIGIN, 1.8 * dir_vec, buff=0, color=col, stroke_width=5)
                 arrow.next_to(target, UP, buff=0.2)
             else:
                 arrow = Arrow(ORIGIN, 1.8 * dir_vec, buff=0, color=col, stroke_width=5)
