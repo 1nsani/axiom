@@ -1,0 +1,45 @@
+{
+  "sistem_id": "gabungan_bidang_katrol",
+  "koordinat_umum": ["q1"],
+  "benda": [
+    {
+      "id": "balok",
+      "massa_simbol": "m1",
+      "massa": 4,
+      "arah_gerak": {
+        "tipe": "sepanjang_bidang_miring",
+        "parameter": {"sudut": 30},
+        "tanda": 1
+      },
+      "koefisien_koordinat": "q1"
+    },
+    {
+      "id": "beban",
+      "massa_simbol": "m2",
+      "massa": 5,
+      "arah_gerak": {
+        "tipe": "vertikal",
+        "parameter": {},
+        "tanda": -1
+      },
+      "koefisien_koordinat": "q1"
+    }
+  ],
+  "gaya": [
+    {
+      "tipe": "gravitasi",
+      "benda": "balok",
+      "parameter": {"g": 10}
+    },
+    {
+      "tipe": "gesekan_kinetis",
+      "benda": "balok",
+      "parameter": {"mu": 0.2, "N": 34.64}
+    },
+    {
+      "tipe": "gravitasi",
+      "benda": "beban",
+      "parameter": {"g": 10}
+    }
+  ]
+}

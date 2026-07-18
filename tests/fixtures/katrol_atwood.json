@@ -1,0 +1,40 @@
+{
+  "sistem_id": "katrol_atwood",
+  "koordinat_umum": ["q1"],
+  "benda": [
+    {
+      "id": "m1",
+      "massa_simbol": "m1",
+      "massa": 3,
+      "arah_gerak": {
+        "tipe": "vertikal",
+        "parameter": {},
+        "tanda": 1
+      },
+      "koefisien_koordinat": "q1"
+    },
+    {
+      "id": "m2",
+      "massa_simbol": "m2",
+      "massa": 5,
+      "arah_gerak": {
+        "tipe": "vertikal",
+        "parameter": {},
+        "tanda": -1
+      },
+      "koefisien_koordinat": "q1"
+    }
+  ],
+  "gaya": [
+    {
+      "tipe": "gravitasi",
+      "benda": "m1",
+      "parameter": {"g": 10}
+    },
+    {
+      "tipe": "gravitasi",
+      "benda": "m2",
+      "parameter": {"g": 10}
+    }
+  ]
+}

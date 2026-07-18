@@ -1,0 +1,29 @@
+{
+  "sistem_id": "bidang_miring_gesekan",
+  "koordinat_umum": ["q1"],
+  "benda": [
+    {
+      "id": "balok",
+      "massa_simbol": "m",
+      "massa": 5,
+      "arah_gerak": {
+        "tipe": "sepanjang_bidang_miring",
+        "parameter": {"sudut": 37},
+        "tanda": 1
+      },
+      "koefisien_koordinat": "q1"
+    }
+  ],
+  "gaya": [
+    {
+      "tipe": "gravitasi",
+      "benda": "balok",
+      "parameter": {"g": 10}
+    },
+    {
+      "tipe": "gesekan_kinetis",
+      "benda": "balok",
+      "parameter": {"mu": 0.2, "N": 39.93}
+    }
+  ]
+}
