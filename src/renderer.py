@@ -546,3 +546,100 @@ class Collision1DScene(MovingCameraScene):
         self.play(GrowArrow(v1f_arrow), Write(v1f_lbl), GrowArrow(v2f_arrow), Write(v2f_lbl))
 
         self.wait(1)
+
+
+class ChainCollisionScene(MovingCameraScene):
+    """Animasi tumbukan beruntun tiga benda berjajar."""
+    def construct(self):
+        import json, os, numpy as np
+        input_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "anim_input.json")
+        if not os.path.exists(input_path):
+            raise FileNotFoundError("anim_input.json tidak ditemukan")
+        with open(input_path, "r") as f:
+            data = json.load(f)
+        
+        hasil = data.get("hasil_fisika", {})
+        params = data.get("parameters", {})
+        log = hasil.get("log_tumbukan", [])
+        massa = hasil.get("massa", {})
+        kecepatan_awal = hasil.get("kecepatan_awal", {})
+        urutan = hasil.get("urutan", ["kiri", "tengah", "kanan"])
+        
+        self.camera.background_color = "#1e1e1e"
+        
+        # Posisi awal benda
+        positions = {
+            "kiri": np.array([-4, 0, 0]),
+            "tengah": np.array([-1, 0, 0]),
+            "kanan": np.array([2, 0, 0]),
+        }
+        
+        # Ukuran berdasarkan massa
+        max_mass = max(massa.values()) if massa else 1
+        sizes = {k: 0.6 + 0.3 * (massa.get(k, 1) / max_mass) for k in urutan}
+        
+        # Buat balok
+        balok = {}
+        colors = {"kiri": BLUE, "tengah": YELLOW, "kanan": RED}
+        for k in urutan:
+            balok[k] = Square(side_length=sizes[k], fill_opacity=0.8, color=colors.get(k, WHITE))
+            balok[k].move_to(positions[k])
+            label = Text(f"m={massa.get(k, 1):.1f}", font_size=16, color=WHITE)
+            label.next_to(balok[k], DOWN, buff=0.2)
+            self.add(balok[k], label)
+        
+        self.wait(0.5)
+        
+        # Animasikan setiap tumbukan dari log
+        for i, tumbukan in enumerate(log):
+            id1, id2 = tumbukan["pasangan"]
+            v1, v2 = tumbukan["v_sebelum"]
+            v1p, v2p = tumbukan["v_sesudah"]
+            
+            # Tentukan arah pergerakan
+            # Asumsikan tumbukan terjadi di tengah-tengah posisi
+            pos1 = balok[id1].get_center()
+            pos2 = balok[id2].get_center()
+            titik_tumbuk = (pos1 + pos2) / 2
+            
+            # Gerakkan balok ke titik tumbuk
+            self.play(
+                balok[id1].animate.move_to(titik_tumbuk + LEFT * sizes[id1]/2),
+                balok[id2].animate.move_to(titik_tumbuk + RIGHT * sizes[id2]/2),
+                run_time=1.0,
+                rate_func=linear,
+            )
+            
+            self.wait(0.2)  # jeda tumbukan
+            
+            # Gerakkan balok setelah tumbukan
+            jarak_gerak = 1.5
+            if v1p != 0:
+                target1 = balok[id1].get_center() + np.sign(v1p) * RIGHT * jarak_gerak
+            else:
+                target1 = balok[id1].get_center()
+            if v2p != 0:
+                target2 = balok[id2].get_center() + np.sign(v2p) * RIGHT * jarak_gerak
+            else:
+                target2 = balok[id2].get_center()
+            
+            self.play(
+                balok[id1].animate.move_to(target1),
+                balok[id2].animate.move_to(target2),
+                run_time=1.0,
+                rate_func=linear,
+            )
+        
+        # HUD
+        alpha_kritis = hasil.get("alpha_kritis")
+        if alpha_kritis:
+            hud_text = f"Alpha kritis = {alpha_kritis:.4f}"
+            hud = Text(hud_text, font_size=24, color=YELLOW).to_corner(UL)
+            self.play(Write(hud))
+        
+        # Tampilkan jumlah tumbukan
+        jumlah = hasil.get("jumlah_tumbukan", len(log))
+        info = Text(f"Jumlah tumbukan: {jumlah}", font_size=20, color=WHITE).to_corner(UR)
+        self.play(Write(info))
+        
+        self.wait(2)

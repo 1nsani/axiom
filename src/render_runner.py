@@ -9,6 +9,7 @@ MOTION_TO_SCENE = {
     "collision_1d": "Collision1DScene",
     "katrol_atwood": "AtwoodMachineScene",
     "trajectory_2d": "ProjectileScene",
+    "tumbukan_beruntun": "ChainCollisionScene",
 }
 
 def preflight_check_latex():
