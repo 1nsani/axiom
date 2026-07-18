@@ -1,5 +1,10 @@
 import json, os, sys, glob, shutil
 
+# Daftar domain yang menggunakan skema JSON (mechanics_schema) alih-alih solver Python
+SCHEMA_DOMAINS = {
+    "bidang_miring_katrol_gabungan": "/tmp/Axiom-knowledge/metadata/domain/bidang_miring_katrol_gabungan.json",
+}
+
 def main():
     print("[ORCH] Axiom Engine — MODE BATCH")
     shared_dir = "/tmp/axiom_shared"
@@ -26,12 +31,60 @@ def main():
         visual_hooks = data.get("visual_hooks", {})
         problem_mode = data.get("problem_mode")
         
-        from mode_dispatch import dispatch_solve
-        try:
+        # Cek apakah domain ini berbasis skema JSON
+        if scene_type in SCHEMA_DOMAINS:
+            from mechanics_builder import bangun_sistem_kanes
+            from mechanics_solver import turunkan_percepatan_simbolik, substitusi_numerik
+            import math
+            
+            skema_path = SCHEMA_DOMAINS[scene_type]
+            with open(skema_path) as sf:
+                skema = json.load(sf)
+            
+            # Update skema dengan nilai dari known_parameters
+            for benda in skema["benda"]:
+                if benda["massa_simbol"] in known:
+                    benda["massa"] = known[benda["massa_simbol"]]
+            for gaya in skema["gaya"]:
+                if "mu" in gaya.get("parameter", {}) and "koefisien_gesek" in known:
+                    gaya["parameter"]["mu"] = known["koefisien_gesek"]
+                if "g" in gaya.get("parameter", {}) and "gravitasi" in known:
+                    gaya["parameter"]["g"] = known["gravitasi"]
+            
+            # Bangun sistem dan hitung
+            KM, ctx = bangun_sistem_kanes(skema)
+            a_simbolik = turunkan_percepatan_simbolik(KM)
+            
+            # Siapkan parameter numerik
+            nilai = {}
+            for k, v in known.items():
+                if k == "sudut_permukaan":
+                    nilai['theta'] = math.radians(v)
+                elif k == "gravitasi":
+                    nilai['g'] = v
+                elif k == "koefisien_gesek":
+                    nilai['mu'] = v
+                elif k == "massa":
+                    nilai['m1'] = v
+                else:
+                    nilai[k] = v
+            
+            a_numerik = substitusi_numerik(a_simbolik, nilai, simbol_map=ctx['simbol'])
+            
+            physics_result = {
+                "motion_type": "static_incline",
+                "hasil": {
+                    "percepatan": round(a_numerik, 4),
+                    "arah_gerak": "ke_atas" if a_numerik < 0 else ("ke_bawah" if a_numerik > 0 else "diam"),
+                },
+                "duration": 4.0,
+            }
+        elif scene_type == "tumbukan_beruntun":
+            from mode_dispatch import dispatch_solve
             physics_result = dispatch_solve(scene_type, known, problem_mode)
-        except Exception as e:
-            ringkasan.append({"nama": nama_file, "status": "gagal_solver", "info": str(e)})
-            continue
+        else:
+            from solvers import solve
+            physics_result = solve(scene_type, known)
         
         anim_data = {
             "motion_type": physics_result["motion_type"],
