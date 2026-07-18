@@ -9,7 +9,7 @@
       "arah_gerak": {
         "tipe": "sepanjang_bidang_miring",
         "parameter": {"sudut": 30},
-        "tanda": 1
+        "tanda": -1
       },
       "koefisien_koordinat": "q1"
     },
@@ -20,7 +20,7 @@
       "arah_gerak": {
         "tipe": "vertikal",
         "parameter": {},
-        "tanda": -1
+        "tanda": 1
       },
       "koefisien_koordinat": "q1"
     }
@@ -34,7 +34,7 @@
     {
       "tipe": "gesekan_kinetis",
       "benda": "balok",
-      "parameter": {"mu": 0.2, "N": 34.64}
+      "parameter": {"mu": 0.2}
     },
     {
       "tipe": "gravitasi",

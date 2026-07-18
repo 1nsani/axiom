@@ -23,7 +23,7 @@
     {
       "tipe": "gesekan_kinetis",
       "benda": "balok",
-      "parameter": {"mu": 0.2, "N": 39.93}
+      "parameter": {"mu": 0.2}
     }
   ]
 }

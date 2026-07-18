@@ -9,7 +9,7 @@
       "arah_gerak": {
         "tipe": "vertikal",
         "parameter": {},
-        "tanda": 1
+        "tanda": -1
       },
       "koefisien_koordinat": "q1"
     },
@@ -20,7 +20,7 @@
       "arah_gerak": {
         "tipe": "vertikal",
         "parameter": {},
-        "tanda": -1
+        "tanda": 1
       },
       "koefisien_koordinat": "q1"
     }

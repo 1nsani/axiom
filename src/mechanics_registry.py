@@ -1,19 +1,18 @@
 """
 Registry untuk tipe arah gerak dan gaya dalam sistem mekanika.
-Pola: registry eksplisit, gagal keras kalau tipe tidak terdaftar.
+Semua fungsi mengembalikan sympy vector untuk digunakan dengan sympy.physics.mechanics.
 """
 
-import numpy as np
-
 # --- Arah Gerak ---
-def _arah_sepanjang_bidang_miring(theta_deg: float):
-    """Unit vector sepanjang bidang miring (ke atas bidang)."""
-    theta = np.radians(theta_deg)
-    return np.array([np.cos(theta), np.sin(theta), 0.0])
+def _arah_sepanjang_bidang_miring(N):
+    """Unit vector sepanjang bidang miring (ke bawah bidang = arah gravitasi sejajar)."""
+    from sympy import symbols, sin, cos
+    theta = symbols('theta', positive=True)
+    return cos(theta) * N.x - sin(theta) * N.y
 
-def _arah_vertikal():
-    """Unit vector vertikal ke atas."""
-    return np.array([0.0, 1.0, 0.0])
+def _arah_vertikal(N):
+    """Unit vector vertikal ke bawah (arah gravitasi)."""
+    return -N.y
 
 SUPPORTED_ARAH_GERAK = {
     "sepanjang_bidang_miring": _arah_sepanjang_bidang_miring,
@@ -21,25 +20,35 @@ SUPPORTED_ARAH_GERAK = {
 }
 
 # --- Gaya ---
-def _gaya_gravitasi(benda_def: dict, sistem_def: dict) -> dict:
-    """Return gaya gravitasi untuk suatu benda."""
-    g = benda_def.get("parameter", {}).get("g", 10.0)
-    massa = benda_def.get("massa", 1.0)
-    return {
-        "magnitude": massa * g,
-        "arah": "absolute_down",
-        "label": f"W_{benda_def['id']}",
-    }
+def _gaya_gravitasi(benda_def, sistem_def, N, titik_map):
+    """Return (Point, force_vector) untuk gaya gravitasi pada suatu benda."""
+    from sympy import symbols
+    g = symbols('g', positive=True)
+    massa_simbol = benda_def.get("massa_simbol", "m")
+    m = symbols(massa_simbol, positive=True)
+    titik = titik_map[benda_def["id"]]
+    return (titik, -m * g * N.y)
 
-def _gaya_gesekan_kinetis(benda_def: dict, sistem_def: dict) -> dict:
-    """Return gaya gesek kinetis untuk benda pada bidang miring."""
-    mu = benda_def.get("parameter", {}).get("mu", 0.0)
-    N = benda_def.get("parameter", {}).get("N", 0.0)
-    return {
-        "magnitude": mu * N,
-        "arah": "parallel_down",  # berlawanan arah gerak
-        "label": f"f_{benda_def['id']}",
-    }
+def _gaya_gesekan_kinetis(benda_def, sistem_def, N, titik_map):
+    """Return (Point, force_vector) untuk gaya gesek kinetis."""
+    from sympy import symbols, cos
+    mu = symbols('mu', positive=True)
+    massa_simbol = benda_def.get("massa_simbol", "m")
+    m = symbols(massa_simbol, positive=True)
+    g = symbols('g', positive=True)
+
+    tipe_arah = benda_def["arah_gerak"]["tipe"]
+    arah_gerak = SUPPORTED_ARAH_GERAK[tipe_arah](N)
+
+    param = benda_def["arah_gerak"].get("parameter", {})
+    if "sudut" in param:
+        theta = symbols('theta', positive=True)
+        normal = m * g * cos(theta)
+    else:
+        normal = m * g
+
+    titik = titik_map[benda_def["id"]]
+    return (titik, -mu * normal * arah_gerak)
 
 SUPPORTED_GAYA = {
     "gravitasi": _gaya_gravitasi,
@@ -48,15 +57,12 @@ SUPPORTED_GAYA = {
 
 
 def validate_system_def(sistem_def: dict) -> None:
-    """
-    Validasi sistem_def terhadap registry.
-    Raise ValueError jika ada tipe yang tidak terdaftar.
-    """
+    """Validasi sistem_def terhadap registry."""
     for benda in sistem_def.get("benda", []):
         tipe_arah = benda.get("arah_gerak", {}).get("tipe")
         if tipe_arah not in SUPPORTED_ARAH_GERAK:
             raise ValueError(
-                f"[ANTI-HALUSINASI] tipe arah_gerak '{tipe_arah}' belum terdaftar di SUPPORTED_ARAH_GERAK. "
+                f"[ANTI-HALUSINASI] tipe arah_gerak '{tipe_arah}' belum terdaftar. "
                 f"Tersedia: {list(SUPPORTED_ARAH_GERAK.keys())}"
             )
 
@@ -64,6 +70,6 @@ def validate_system_def(sistem_def: dict) -> None:
         tipe_gaya = gaya.get("tipe")
         if tipe_gaya not in SUPPORTED_GAYA:
             raise ValueError(
-                f"[ANTI-HALUSINASI] tipe gaya '{tipe_gaya}' belum terdaftar di SUPPORTED_GAYA. "
+                f"[ANTI-HALUSINASI] tipe gaya '{tipe_gaya}' belum terdaftar. "
                 f"Tersedia: {list(SUPPORTED_GAYA.keys())}"
             )
