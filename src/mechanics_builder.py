@@ -3,7 +3,7 @@ Translator dari skema JSON ke sistem sympy.physics.mechanics (Kane's Method).
 """
 
 from sympy.physics.mechanics import dynamicsymbols, ReferenceFrame, Point, Particle, KanesMethod
-from sympy import symbols
+from sympy import symbols, sin, cos
 from mechanics_registry import SUPPORTED_ARAH_GERAK, SUPPORTED_GAYA, validate_system_def
 
 def bangun_sistem_kanes(skema: dict):
@@ -15,7 +15,7 @@ def bangun_sistem_kanes(skema: dict):
             - q, u, qd: generalized coordinate/speed/derivative
             - particles: list of Particle
             - titik_map: dict mapping id benda ke Point
-            - simbol: dict simbol-simbol yang dipakai
+            - simbol: dict simbol-simbol yang dipakai (termasuk theta, g, mu, dll.)
             - fr, frstar: generalized forces
     """
     validate_system_def(skema)
@@ -36,8 +36,10 @@ def bangun_sistem_kanes(skema: dict):
     # Tambahkan simbol standar
     g = symbols('g', positive=True)
     mu = symbols('mu', positive=True)
+    theta = symbols('theta', positive=True)
     all_symbols['g'] = g
     all_symbols['mu'] = mu
+    all_symbols['theta'] = theta
     
     # Proses setiap benda
     for benda in skema["benda"]:
