@@ -9,6 +9,7 @@ MOTION_TO_SCENE = {
     "collision_1d": "Collision1DScene",
     "katrol_atwood": "AtwoodMachineScene",
     "trajectory_2d": "ProjectileScene",
+    "sistem_gabungan_2benda": "CoupledSystemScene",
     "tumbukan_beruntun": "ChainCollisionScene",
 }
 

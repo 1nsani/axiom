@@ -1,9 +1,32 @@
 import json, os, sys, glob, shutil
 
-# Daftar domain yang menggunakan skema JSON (mechanics_schema) alih-alih solver Python
+AXIOM_KNOWLEDGE_PATH = os.environ.get("AXIOM_KNOWLEDGE_PATH", "/tmp/Axiom-knowledge")
+
 SCHEMA_DOMAINS = {
-    "bidang_miring_katrol_gabungan": "/tmp/Axiom-knowledge/metadata/domain/bidang_miring_katrol_gabungan.json",
+    "bidang_miring_katrol_gabungan": os.path.join(AXIOM_KNOWLEDGE_PATH, "metadata/domain/bidang_miring_katrol_gabungan.json"),
 }
+
+def map_known_to_nilai(known, skema):
+    """Petakan known_parameters ke dict nilai untuk substitusi numerik."""
+    import math
+    nilai = {}
+    for k, v in known.items():
+        if k == "sudut_permukaan":
+            nilai['theta'] = math.radians(v)
+        elif k == "gravitasi":
+            nilai['g'] = v
+        elif k == "koefisien_gesek":
+            nilai['mu'] = v
+        else:
+            nilai[k] = v
+    
+    # Petakan massa: "massa" -> m1, "massa_2" -> m2, dst.
+    for i, benda in enumerate(skema["benda"], start=1):
+        key_massa = "massa" if i == 1 else f"massa_{i}"
+        if key_massa in known:
+            nilai[benda["massa_simbol"]] = known[key_massa]
+    
+    return nilai
 
 def main():
     print("[ORCH] Axiom Engine — MODE BATCH")
@@ -20,8 +43,7 @@ def main():
     ringkasan = []
     for filepath in files:
         nama_file = os.path.basename(filepath).replace("known_parameters_", "").replace(".json", "")
-        if nama_file == "known_parameters":
-            nama_file = "default"
+        if nama_file == "known_parameters": nama_file = "default"
         print(f"\n[PROSES] {nama_file}")
         with open(filepath) as f:
             data = json.load(f)
@@ -31,54 +53,44 @@ def main():
         visual_hooks = data.get("visual_hooks", {})
         problem_mode = data.get("problem_mode")
         
-        # Cek apakah domain ini berbasis skema JSON
         if scene_type in SCHEMA_DOMAINS:
             from mechanics_builder import bangun_sistem_kanes
             from mechanics_solver import turunkan_percepatan_simbolik, substitusi_numerik
-            import math
+            from mechanics_bridge import mechanics_result_ke_hasil_fisika, build_vectors_from_skema
             
             skema_path = SCHEMA_DOMAINS[scene_type]
             with open(skema_path) as sf:
                 skema = json.load(sf)
             
-            # Update skema dengan nilai dari known_parameters
+            # Update skema dengan known parameters (untuk backward compatibility)
             for benda in skema["benda"]:
                 if benda["massa_simbol"] in known:
                     benda["massa"] = known[benda["massa_simbol"]]
             for gaya in skema["gaya"]:
                 if "mu" in gaya.get("parameter", {}) and "koefisien_gesek" in known:
-                    gaya["parameter"]["mu"] = known["koefisien_gesek"]
+                    gaya["parameter"]["mu"] = known.get("koefisien_gesek", 0)
                 if "g" in gaya.get("parameter", {}) and "gravitasi" in known:
-                    gaya["parameter"]["g"] = known["gravitasi"]
+                    gaya["parameter"]["g"] = known.get("gravitasi", 10)
             
-            # Bangun sistem dan hitung
             KM, ctx = bangun_sistem_kanes(skema)
             a_simbolik = turunkan_percepatan_simbolik(KM)
             
-            # Siapkan parameter numerik
-            nilai = {}
-            for k, v in known.items():
-                if k == "sudut_permukaan":
-                    nilai['theta'] = math.radians(v)
-                elif k == "gravitasi":
-                    nilai['g'] = v
-                elif k == "koefisien_gesek":
-                    nilai['mu'] = v
-                elif k == "massa":
-                    nilai['m1'] = v
-                else:
-                    nilai[k] = v
-            
+            nilai = map_known_to_nilai(known, skema)
             a_numerik = substitusi_numerik(a_simbolik, nilai, simbol_map=ctx['simbol'])
+            hasil_fisika = mechanics_result_ke_hasil_fisika(skema, a_numerik)
+            vectors = build_vectors_from_skema(skema)
+            
+            # BUG 4: motion_type berdasarkan jumlah benda
+            n_benda = len(skema["benda"])
+            motion_type = "static_incline" if n_benda == 1 else "sistem_gabungan_2benda"
             
             physics_result = {
-                "motion_type": "static_incline",
-                "hasil": {
-                    "percepatan": round(a_numerik, 4),
-                    "arah_gerak": "ke_atas" if a_numerik < 0 else ("ke_bawah" if a_numerik > 0 else "diam"),
-                },
+                "motion_type": motion_type,
+                "hasil": hasil_fisika,
                 "duration": 4.0,
             }
+            visual_hooks["vectors_template"] = vectors
+            
         elif scene_type == "tumbukan_beruntun":
             from mode_dispatch import dispatch_solve
             physics_result = dispatch_solve(scene_type, known, problem_mode)

@@ -58,3 +58,12 @@ def test_gabungan_numerik():
     
     expected = 5.714285714285714
     assert a == pytest.approx(expected, abs=1e-6)
+
+def test_gabungan_numerik_dengan_gesekan():
+    """m1=4, theta=30°, m2=5, mu=0.2, g=10 -> a = 2.5635..."""
+    skema = load_fixture("gabungan_bidang_katrol.json")
+    KM, ctx = bangun_sistem_kanes(skema)
+    a_simbolik = turunkan_percepatan_simbolik(KM)
+    nilai = {'m1': 4, 'm2': 5, 'theta': math.radians(30), 'g': 10, 'mu': 0.2}
+    a = substitusi_numerik(a_simbolik, nilai, simbol_map=ctx['simbol'])
+    assert a == pytest.approx(2.563532974413832, abs=1e-6)

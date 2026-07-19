@@ -643,3 +643,80 @@ class ChainCollisionScene(MovingCameraScene):
         self.play(Write(info))
         
         self.wait(2)
+
+class CoupledSystemScene(MovingCameraScene):
+    """Animasi sistem gabungan: balok di bidang miring + beban tergantung."""
+    def construct(self):
+        import json, os, numpy as np
+        input_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "anim_input.json")
+        if not os.path.exists(input_path):
+            raise FileNotFoundError("anim_input.json tidak ditemukan")
+        with open(input_path, "r") as f:
+            data = json.load(f)
+        
+        params = data.get("parameters", {})
+        hasil = data.get("hasil_fisika", {})
+        vectors = data.get("vectors_to_render", [])
+        
+        m1 = params.get("massa", 2)
+        m2 = params.get("massa_2", 5)
+        theta_deg = params.get("sudut_permukaan", 30)
+        a = hasil.get("percepatan", 0)
+        T = hasil.get("tegangan", 0)
+        
+        theta_rad = np.radians(theta_deg)
+        
+        # Bidang miring
+        bidang = Line(ORIGIN, 7*RIGHT).rotate(theta_rad, about_point=ORIGIN).shift(LEFT*3 + DOWN*0.5)
+        alas = Line(bidang.get_start(), bidang.get_start() + 7*RIGHT)
+        self.play(Create(alas), Create(bidang))
+        
+        # Balok di bidang miring
+        vn = np.array([-np.sin(theta_rad), np.cos(theta_rad), 0.0])
+        vp = np.array([np.cos(theta_rad), np.sin(theta_rad), 0.0])
+        balok = Square(side_length=0.7, fill_opacity=0.8, color=BLUE).rotate(theta_rad)
+        balok.move_to(bidang.point_from_proportion(0.3) + 0.4*vn)
+        
+        # Katrol di ujung kanan atas bidang
+        pulley_pos = bidang.get_end() + UP*0.3
+        katrol = Circle(radius=0.4, color=WHITE).move_to(pulley_pos)
+        self.play(Create(katrol), FadeIn(balok))
+        
+        # Beban tergantung
+        beban = Square(side_length=0.6, fill_opacity=0.8, color=RED)
+        beban.move_to(pulley_pos + DOWN*2.5)
+        self.play(FadeIn(beban))
+        
+        # Tali
+        tali_atas = Line(balok.get_top(), pulley_pos + LEFT*0.4, color=WHITE)
+        tali_bawah = Line(pulley_pos + RIGHT*0.4, beban.get_top(), color=WHITE)
+        busur = ArcBetweenPoints(pulley_pos + LEFT*0.4, pulley_pos + RIGHT*0.4, angle=PI, color=WHITE)
+        self.add(tali_atas, tali_bawah, busur)
+        
+        # Label
+        label_balok = Text(f"m1={m1}kg", font_size=20, color=WHITE).next_to(balok, UP, buff=0.2)
+        label_beban = Text(f"m2={m2}kg", font_size=20, color=WHITE).next_to(beban, RIGHT, buff=0.2)
+        self.play(Write(label_balok), Write(label_beban))
+        
+        # HUD
+        hud = VGroup(
+            Text(f"a = {a:.2f} m/s²", font_size=24, color=YELLOW),
+            Text(f"T = {T:.1f} N", font_size=24, color=YELLOW)
+        ).arrange(DOWN, aligned_edge=LEFT).to_corner(UL, buff=0.5)
+        self.play(Write(hud))
+        
+        # Gerakan
+        if abs(a) > 0.01:
+            runtime = 3.0
+            disp = min(0.5 * abs(a) * runtime**2, 2.0)
+            # Balok bergerak naik bidang jika a negatif
+            arah_balok = -vp if a < 0 else vp
+            # Beban bergerak turun jika a > 0
+            arah_beban = DOWN if a > 0 else UP
+            self.play(
+                balok.animate.shift(arah_balok * disp),
+                beban.animate.shift(arah_beban * disp),
+                run_time=runtime, rate_func=linear
+            )
+        
+        self.wait(2)
