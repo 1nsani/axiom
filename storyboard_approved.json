@@ -1,0 +1,48 @@
+{
+  "storyboard_id": "bidang_miring_basic",
+  "domain_asal": "static_incline",
+  "sumber_data": {
+    "known": {
+      "massa": 5,
+      "sudut_permukaan": 30
+    },
+    "hasil_fisika": {
+      "percepatan": 3.2679
+    }
+  },
+  "fase": [
+    {
+      "nama": "setup",
+      "durasi_detik": 2.0,
+      "caption_template": "Balok {massa} kg, sudut {sudut_permukaan}\u00b0",
+      "aksi": [
+        {
+          "tipe": "gambar_bidang_miring",
+          "target": "bidang",
+          "parameter": {
+            "sudut": 30
+          }
+        },
+        {
+          "tipe": "gambar_balok",
+          "target": "balok",
+          "parameter": {}
+        }
+      ]
+    },
+    {
+      "nama": "gerak",
+      "durasi_detik": 3.0,
+      "caption_template": "Percepatan = {percepatan} m/s\u00b2",
+      "aksi": [
+        {
+          "tipe": "animasikan_pergerakan",
+          "target": "balok",
+          "parameter": {
+            "arah": "ke_bawah"
+          }
+        }
+      ]
+    }
+  ]
+}
